@@ -8,15 +8,20 @@ npm run dev
 ```
 터미널에 표시된 `http://localhost:5173` 주소를 브라우저에서 엽니다.
 
+- **장면 바로 가기:** 시작 화면의 "장면 바로 가기"에서 고르거나, 주소 뒤에 `?step=장면id`를 붙입니다. 예: `http://localhost:5173/?step=hook`
+  - 장면 id: `wake` 눈뜸, `whisper` 속삭임, `row` 노 젓기, `lamps` 등불 찾기, `hook` 훅, `reflect` 물그림자, `cloth` 천 조각, `chorus` 후렴 1 예고, `island` 섬, `end` 끝, `c1interlude`·`c1verse` 챕터 1 맛보기
+- **이어하기:** 마지막으로 들어간 장면이 브라우저에 저장되어, 다음에 시작 화면에 "이어서" 버튼이 생깁니다
+
 ## 폴더 구조
 | 폴더 | 내용 |
 | --- | --- |
-| `src/data/` | 코드(화음)·편곡 모드·챕터 정의, 화면 문구 |
+| `src/data/` | 곡 구성(`song.ts`), 코드, 편곡 모드, 챕터 장면·배치·문구(`chapter0.ts`) |
+| `src/story/` | 장면 진행 관리(`director.ts`), 챕터 0 장면들(`chapter0.ts`) |
+| `src/world/` | 게임 상태, 화면 배치, 매 프레임 갱신, 줄 튕기기, 박 시계·그루브(`rhythm.ts`), 노 젓기(`rowing.ts`) |
 | `src/input/` | 마우스 드래그(오른손), 키보드 코드(왼손) |
-| `src/audio/` | Web Audio 음색 합성 |
+| `src/audio/` | 기타 음색 합성(`engine.ts`), 심장·드럼·베이스(`kit.ts`) |
 | `src/render/` | 캔버스 그리기, 수묵·이펙트 |
-| `src/world/` | 게임 상태, 화면 배치, 매 프레임 갱신, 줄 튕기기 |
-| `src/story/` | 챕터 퍼즐 진행 |
-| `src/ui/` | HTML HUD(칩, 음색 버튼, 배너) |
+| `src/ui/` | HTML 화면 요소(목표 문구, 운지표, 배너, 붓글씨 안내) |
 | `prototype/` | 원본 단일 HTML 프로토타입 (손맛 기준, 수정하지 않음) |
-| `docs/` | 기획 문서, 아이디어 보관함 |
+| `docs/` | 기획(`design.md`), 곡 구성표(`song-map.md`), 시나리오(`scenario-ch0-1.md`), 아이디어, 진행 보고서 |
+| `assets/` | 원곡 MR·악보 (로컬 전용, 저장소에 올리지 않음) |

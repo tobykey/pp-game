@@ -146,7 +146,7 @@ const clothStep: StepHandler = {
   update(dt, el) {
     if (cloth.active) {
       const target = S.boat + 0.09;
-      cloth.wx = Math.max(target, cloth.wx - dt * 0.07);
+      cloth.wx = Math.max(target, cloth.wx - dt * 0.1);
       once('arrive', cloth.wx <= target + 0.001, () => ink(TEXT.hintCloth));
     }
     if (tiedAt >= 0) {
