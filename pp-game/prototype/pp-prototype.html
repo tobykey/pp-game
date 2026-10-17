@@ -1,0 +1,567 @@
+<title>pp 6현 소나</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one full-bleed ink painting. HUD floats on top, the six strings own the bottom third.
+   Single deliberate look: hanji paper + sumi ink, neon accent reserved for loud moments. */
+:root{
+  --paper:#eae6de;
+  --paper-2:#ddd7cc;
+  --ink:#17140f;
+  --ink-soft:#5d564c;
+  --accent:#ff2a7f;
+  --volt:#ffe23d;
+  --f-brush:"Nanum Brush Script","Gowun Batang","Apple SD Gothic Neo",serif;
+  --f-body:"Gowun Batang","Noto Serif KR","Apple SD Gothic Neo",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);overflow:hidden;font-family:var(--f-body);touch-action:none;-webkit-user-select:none;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+
+.hud{position:fixed;top:0;left:0;right:0;z-index:2;pointer-events:none;display:flex;flex-direction:column;gap:10px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 12px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.obj{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;min-width:0}
+.brand{font-family:var(--f-brush);font-size:40px;line-height:.8;letter-spacing:-.02em}
+#objText{font-size:14px;color:var(--ink);text-wrap:balance}
+#found{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;color:var(--ink-soft)}
+.right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.modes{display:flex;border:1.5px solid var(--ink);background:rgba(234,230,222,.7)}
+.modes button,.reset{pointer-events:auto;font:inherit;font-size:13px;border:0;background:transparent;color:var(--ink);padding:6px 11px;cursor:pointer}
+.modes button+button{border-left:1.5px solid var(--ink)}
+.modes button small{font-family:var(--f-mono);font-size:10px;color:var(--ink-soft);margin-right:4px}
+.modes button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.modes button[aria-pressed="true"] small{color:var(--accent)}
+.reset{border:1.5px solid var(--ink);background:rgba(234,230,222,.7)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:7px;padding:4px 8px 4px 9px;border:1.5px solid rgba(23,20,15,.55);background:rgba(234,230,222,.72);color:var(--ink);font:inherit}
+.chip b{font-family:var(--f-brush);font-size:24px;line-height:1;font-weight:400;min-width:1.4em}
+.chip .keys{display:flex;gap:2px}
+.chip kbd{font-family:var(--f-mono);font-size:10px;width:17px;height:17px;display:grid;place-items:center;border:1px solid rgba(23,20,15,.45);color:var(--ink-soft)}
+.chip kbd.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip.active{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.chip.active kbd{border-color:rgba(234,230,222,.5);color:var(--paper)}
+.chip.active kbd.on{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.chip.sticky::after{content:"고정";font-size:10px;color:var(--accent)}
+.chip.oos b{color:var(--accent)}
+.chip.active.oos b{color:var(--volt)}
+.sep{width:1px;align-self:stretch;background:rgba(23,20,15,.3);margin:0 4px}
+
+.hint{position:fixed;left:0;right:0;bottom:0;z-index:2;pointer-events:none;text-align:center;font-size:11.5px;color:var(--ink-soft);
+  padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hint b{color:var(--ink);font-weight:700}
+
+.banner{position:fixed;left:50%;top:38%;z-index:3;pointer-events:none;white-space:nowrap;font-family:var(--f-brush);font-size:clamp(30px,7vw,60px);line-height:1.1;
+  padding:.05em .45em;opacity:0;transform:translate(-50%,-50%) scale(.92);transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1)}
+.banner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.banner.soft{color:var(--ink);background:rgba(234,230,222,.82);font-size:clamp(24px,5vw,40px)}
+.banner.rock{color:var(--volt);background:var(--accent);border:4px solid var(--ink);box-shadow:7px 7px 0 var(--ink);-webkit-text-stroke:2px var(--ink);paint-order:stroke fill}
+.banner.rock.show{transform:translate(-50%,-50%) rotate(-3deg) scale(1)}
+
+.start{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:var(--paper);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+.start .card{max-width:520px;display:flex;flex-direction:column;gap:18px}
+.start h1{margin:0;font-family:var(--f-brush);font-weight:400;font-size:clamp(110px,26vw,190px);line-height:.7;letter-spacing:-.04em}
+.start h1 span{color:var(--accent);font-size:.28em;letter-spacing:0;vertical-align:top;margin-left:.15em}
+.start .sub{font-size:15px;color:var(--ink-soft);margin:0}
+.start dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:14px;line-height:1.5}
+.start dt{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--accent);padding-top:3px;white-space:nowrap}
+.start dd{margin:0;min-width:0}
+.go{align-self:flex-start;font-family:var(--f-brush);font-size:30px;border:2.5px solid var(--ink);background:var(--ink);color:var(--paper);padding:4px 26px 6px;cursor:pointer;box-shadow:5px 5px 0 var(--accent);transition:transform .12s,box-shadow .12s}
+.go:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--accent)}
+.go:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--accent)}
+.start .note{font-size:12px;color:var(--ink-soft);margin:0}
+@media (max-width:560px){ .chip b{font-size:21px} .modes button{padding:6px 8px} .modes button small{display:none} #objText{font-size:13px} }
+</style>
+
+<canvas id="c"></canvas>
+
+<div class="hud" id="hud">
+  <div class="row">
+    <div class="obj">
+      <span class="brand">pp</span>
+      <span id="objText">안개 속 등불 넷을 찾아, 곡의 순서대로 울리세요</span>
+      <span id="found">발견 0 / 4</span>
+    </div>
+    <div class="right">
+      <div class="modes" role="group" aria-label="편곡 음색">
+        <button data-mode="rock" aria-pressed="true"><small>1</small>락</button>
+        <button data-mode="acoustic" aria-pressed="false"><small>2</small>어쿠스틱</button>
+        <button data-mode="strings" aria-pressed="false"><small>3</small>현악</button>
+        <button data-mode="korean" aria-pressed="false"><small>4</small>국악</button>
+      </div>
+      <button class="reset" id="reset">처음부터</button>
+    </div>
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<div class="hint" id="hint"><b>왼손</b> 키를 함께 눌러 코드 · <b>오른손</b> 줄 위를 드래그 (아래로 다운, 위로 업, 천천히 아르페지오) · 빠를수록 세게 · <b>Shift</b> 팜뮤트</div>
+<div class="banner" id="banner"></div>
+
+<div class="start" id="start">
+  <div class="card">
+    <h1>pp<span>피아니시모</span></h1>
+    <p class="sub">6현 소나 프로토타입. 안개 낀 바다에서 현을 긁으면 파동이 퍼지고, 숨은 것들이 드러납니다.</p>
+    <dl>
+      <dt>왼손</dt><dd>키보드 키를 함께 눌러 코드를 잡습니다. 위쪽 칩이 운지표예요. 터치 화면에선 칩을 눌러 고정합니다.</dd>
+      <dt>오른손</dt><dd>아래 여섯 줄 위로 드래그. 긁는 위치가 파동이 시작되는 곳입니다.</dd>
+      <dt>세기</dt><dd>빠를수록 ff, 느릴수록 pp. 세게 치면 멀리 퍼지지만 지워지는 것도 있어요.</dd>
+      <dt>줄</dt><dd>굵은 6번 줄은 멀리, 가는 1번 줄은 가까이 닿는 대신 글씨까지 보여줍니다.</dd>
+      <dt>음색</dt><dd>1–4 키로 락 · 어쿠스틱 · 현악 · 국악 편곡을 바꿉니다.</dd>
+    </dl>
+    <button class="go" id="go">현을 깨우기</button>
+    <p class="note">소리가 납니다. 헤드폰을 권해요.</p>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const cv=$('#c'), ctx=cv.getContext('2d');
+const rand=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,t)=>a+(b-a)*t;
+const seeded=s=>()=>{s=(s*16807)%2147483647;return (s-1)/2147483646};
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const INK='#17140f', INK_SOFT='#5d564c', PAPER='#eae6de', VOLT='#ffe23d';
+const BRUSH='"Nanum Brush Script","Gowun Batang",serif', MONO='"IBM Plex Mono",monospace';
+
+const MODES={rock:{accent:'#ff2a7f'},acoustic:{accent:'#b2652a'},strings:{accent:'#3a4cd8'},korean:{accent:'#d2342a'}};
+const CHORDS={
+  open:{label:'개방',keys:[],v:[40,45,50,55,59,64]},
+  Db:{label:'D♭',keys:['A','S','D'],v:[null,49,56,61,65,68]},
+  Eb:{label:'E♭',keys:['W','E','R'],v:[null,51,58,63,67,70]},
+  Cm7:{label:'Cm7',keys:['Z','X','C','V'],v:[null,48,55,58,63,67]},
+  F:{label:'F',keys:['Q','A','Z'],v:[41,48,53,57,60,65],oos:true},
+  Ab:{label:'A♭',keys:['W','S','X'],v:[44,51,56,60,63,68]},
+  C:{label:'C',keys:['Q','S','C'],v:[null,48,52,55,60,64]},
+  D:{label:'D',keys:['S','Z','C'],v:[null,null,50,57,62,66]},
+};
+const SEQ=['Db','Eb','Cm7','F'];
+const THORN_OF={Db:3,Eb:1,Cm7:0,F:2}; // which flat each lamp pulls: B E A D
+
+let W=0,H=0,DPR=1,paper=null,seaStrokes=[],mountains=[],started=false,AC=null;
+const S={t:0,mode:'rock',chord:'open',held:new Set(),sticky:null,mute:false,shake:0,flash:0,flashCol:'#ff2a7f',
+  dyn:null,seal:0,progress:0,finale:null,sail:0,sailT:0};
+const str=[...Array(6)].map(()=>({amp:0,ph:0,hot:0}));
+let rip=[],parts=[],lines=[];
+const thorns=[{n:'B',p:2},{n:'E',p:.5},{n:'A',p:2.5},{n:'D',p:1}].map(o=>({...o,gone:false,fly:null}));
+const OBJ=[
+  {id:'isleL',kind:'isle',rx:.18,ry:.36,s:1,seed:7},
+  {id:'isleR',kind:'isle',rx:.85,ry:.18,s:.62,seed:19},
+  {id:'Db',kind:'lamp',rx:.32,ry:.74,chord:'Db'},
+  {id:'Eb',kind:'lamp',rx:.66,ry:.30,chord:'Eb'},
+  {id:'Cm7',kind:'lamp',rx:.17,ry:.70,chord:'Cm7'},
+  {id:'F',kind:'lamp',rx:.85,ry:.70,chord:'F',hint:'♮'},
+  {id:'refl',kind:'refl'},
+  {id:'whisper',kind:'whisper',rx:.5,ry:.86,pp:true},
+].map(o=>({...o,vis:0,detail:0,found:false,lit:false,res:0}));
+OBJ.filter(o=>o.kind==='isle').forEach(o=>{const r=seeded(o.seed);o.pts=[];const n=9;for(let i=0;i<=n;i++){const u=i/n;o.pts.push([u,Math.pow(Math.sin(Math.PI*u),.8)*(.45+r()*.55)])}});
+const obj=id=>OBJ.find(o=>o.id===id);
+
+/* ---------- geometry ---------- */
+const hz=()=>H*.2, sb=()=>H*.655, boatY=()=>hz()+(sb()-hz())*.5;
+const sx0=()=>Math.max(22,W*.05), sx1=()=>W-Math.max(22,W*.05);
+const stringY=i=>{const top=H*.705,bot=H-Math.max(52,H*.075);return top+(bot-top)*i/5};
+function pos(o){ if(o.kind==='refl') return {x:W/2,y:boatY()+38}; return {x:o.rx*W,y:hz()+(sb()-hz())*o.ry}; }
+
+/* ---------- canvas prep ---------- */
+function resize(){
+  DPR=Math.min(2,devicePixelRatio||1); W=innerWidth; H=innerHeight;
+  cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  makePaper(); makeSea(); makeMountains();
+}
+function makePaper(){
+  paper=document.createElement('canvas'); paper.width=W*DPR; paper.height=H*DPR;
+  const p=paper.getContext('2d'); p.scale(DPR,DPR);
+  p.fillStyle=PAPER; p.fillRect(0,0,W,H);
+  for(let i=0;i<W*H/260;i++){p.fillStyle=`rgba(23,20,15,${rand(.015,.06)})`;p.fillRect(rand(0,W),rand(0,H),rand(.5,1.6),rand(.5,1.6))}
+  p.lineCap='round';
+  for(let i=0;i<W*H/2600;i++){const x=rand(0,W),y=rand(0,H),a=rand(0,Math.PI*2),l=rand(6,22);
+    p.strokeStyle=`rgba(23,20,15,${rand(.03,.07)})`;p.lineWidth=rand(.3,.8);p.beginPath();p.moveTo(x,y);
+    p.quadraticCurveTo(x+Math.cos(a+.6)*l*.5,y+Math.sin(a+.6)*l*.5,x+Math.cos(a)*l,y+Math.sin(a)*l);p.stroke()}
+  const g=p.createRadialGradient(W/2,H*.42,Math.min(W,H)*.3,W/2,H*.5,Math.max(W,H)*.8);
+  g.addColorStop(0,'rgba(23,20,15,0)');g.addColorStop(1,'rgba(60,45,30,.16)');p.fillStyle=g;p.fillRect(0,0,W,H);
+}
+function makeSea(){
+  seaStrokes=[]; const rows=Math.round(30+H/40);
+  for(let k=0;k<rows;k++){const d=Math.pow(k/rows,1.5);const y=lerp(hz()+4,sb(),d);const n=Math.round(3+W/160);
+    for(let j=0;j<n;j++) seaStrokes.push({y,x:rand(-40,W),len:lerp(14,90,d)*rand(.6,1.4),w:lerp(.5,2.1,d)*rand(.7,1.3),a:rand(.07,.26)*(.5+d*.7),ph:rand(0,6.28),d})}
+}
+function makeMountains(){
+  mountains=[]; [[.55,.07,.15],[.32,.11,.25]].forEach(([amp,base,al],li)=>{const r=seeded(31+li*11);const pts=[];let h=r();
+    for(let x=-20;x<=W+20;x+=18){h=clamp(h+(r()-.5)*.35,0,1);pts.push([x,hz()-H*base*h*amp*1.6-H*.004])}
+    mountains.push({pts,al})});
+}
+
+/* ---------- audio ---------- */
+let bus,chains={},ksCache={};
+function initAudio(){
+  AC=new (window.AudioContext||window.webkitAudioContext)();
+  const comp=AC.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4;
+  const master=AC.createGain(); master.gain.value=.85; comp.connect(master); master.connect(AC.destination);
+  const rev=AC.createConvolver(); rev.buffer=impulse(3,2.6); const rg=AC.createGain(); rg.gain.value=.3; rev.connect(rg); rg.connect(comp);
+  bus=AC.createGain(); bus.connect(comp); bus.connect(rev);
+  const send=(node,amt)=>{const g=AC.createGain();g.gain.value=amt;node.connect(g);g.connect(rev)};
+  const bq=(type,f,q=.7,gain=0)=>{const b=AC.createBiquadFilter();b.type=type;b.frequency.value=f;b.Q.value=q;b.gain.value=gain;return b};
+  const chain=(...n)=>{for(let i=0;i<n.length-1;i++)n[i].connect(n[i+1]);return n};
+  // rock: drive into a tanh shaper, cab-ish filtering
+  {const i=AC.createGain(),sh=AC.createWaveShaper();sh.curve=curve(10);sh.oversample='4x';const o=AC.createGain();o.gain.value=.2;
+   chain(i,bq('highpass',95),sh,bq('peaking',850,1,4),bq('lowpass',4200,.9),o,bus);chains.rock=i}
+  {const i=AC.createGain(),o=AC.createGain();o.gain.value=.95;chain(i,bq('peaking',190,1,5),bq('highshelf',3500,.7,2),bq('lowpass',8500),o,bus);chains.acoustic=i}
+  {const i=AC.createGain(),o=AC.createGain();o.gain.value=1;chain(i,bq('lowpass',3400,.6),o,bus);send(o,.55);chains.strings=i}
+  {const i=AC.createGain(),o=AC.createGain();o.gain.value=1;chain(i,bq('peaking',1200,1.2,3),bq('lowpass',5200),o,bus);send(o,.45);chains.korean=i}
+}
+function curve(k){const n=2048,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=Math.tanh(k*x)/Math.tanh(k)}return c}
+function impulse(sec,dec){const len=AC.sampleRate*sec,b=AC.createBuffer(2,len,AC.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,dec)}return b}
+function ks(midi,mode){
+  const key=mode+midi; const list=ksCache[key]||(ksCache[key]=[]);
+  if(list.length>=3) return list[(Math.random()*3)|0];
+  const sr=AC.sampleRate,f=440*Math.pow(2,(midi-69)/12),N=Math.max(2,Math.round(sr/f));
+  const dur={rock:3.4,acoustic:2.6,korean:3}[mode]||2.6, damp={rock:.9988,acoustic:.9962,korean:.9975}[mode]||.996;
+  const len=Math.floor(sr*dur),buf=AC.createBuffer(1,len,sr),d=buf.getChannelData(0),ring=new Float32Array(N);
+  let lp=0; const sm=mode==='acoustic'?.55:mode==='korean'?.05:.25;
+  for(let i=0;i<N;i++){const n=Math.random()*2-1;lp=lp*sm+n*(1-sm);ring[i]=lp}
+  let idx=0; for(let i=0;i<len;i++){const cur=ring[idx],nx=ring[(idx+1)%N];d[i]=cur;ring[idx]=damp*.5*(cur+nx);idx=(idx+1)%N}
+  const item={buf,rate:f/(sr/(N+.5))}; list.push(item); return item;
+}
+function playNote(midi,dyn){
+  if(!AC) return; const t=AC.currentTime, mode=S.mode, dest=chains[mode], mute=S.mute;
+  if(midi==null){ // muted string: a dead click
+    const len=AC.sampleRate*.035,b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);
+    const s=AC.createBufferSource(),g=AC.createGain();s.buffer=b;g.gain.value=.08+.25*dyn;s.connect(g);g.connect(dest);s.start(t);return}
+  if(mode==='strings'){
+    const f=440*Math.pow(2,(midi-69)/12),g=AC.createGain(),lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=700+2600*dyn;
+    const peak=(.035+.08*dyn), atk=lerp(.32,.05,dyn), rel=mute?.35:2.6;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+atk);g.gain.exponentialRampToValueAtTime(.0001,t+atk+rel);
+    [-8,7,0].forEach((dt,k)=>{const o=AC.createOscillator();o.type=k===2?'triangle':'sawtooth';o.frequency.value=k===2?f/2:f;o.detune.value=dt;o.connect(lp);o.start(t);o.stop(t+atk+rel+.1)});
+    lp.connect(g);g.connect(dest);return}
+  const k=ks(midi,mode), s=AC.createBufferSource(), g=AC.createGain(); s.buffer=k.buf;
+  const vel=mode==='rock'? .25+1.7*Math.pow(dyn,1.2) : .1+.42*Math.pow(dyn,1.3);
+  g.gain.setValueAtTime(vel,t);
+  if(mute) g.gain.setTargetAtTime(0,t+.04,.05);
+  if(mode==='korean'){ // nonghyeon: a pitch scoop then a slow vibrato
+    s.playbackRate.setValueAtTime(k.rate*1.04,t);s.playbackRate.exponentialRampToValueAtTime(k.rate,t+.14);
+    const lfo=AC.createOscillator(),lg=AC.createGain();lfo.frequency.value=5.2;lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(k.rate*.014,t+.7);
+    lfo.connect(lg);lg.connect(s.playbackRate);lfo.start(t);lfo.stop(t+3.2);
+  } else s.playbackRate.value=k.rate;
+  s.connect(g);g.connect(dest);s.start(t);
+}
+
+/* ---------- play logic ---------- */
+function dynFrom(v){return clamp((v-.06)/2.3,.04,1)}
+function dynMark(d){return d<.15?'pp':d<.3?'p':d<.48?'mp':d<.66?'mf':d<.84?'f':'ff'}
+function pluck(i,dyn,dir,x){
+  const midi=CHORDS[S.chord].v[i]; playNote(midi,dyn);
+  const s=str[i]; s.amp=Math.min(15,2.5+dyn*14)*(S.mute?.45:1); s.hot=dyn; s.ph=0;
+  spawnRipple(i,dyn,dir,x,midi==null);
+  S.dyn={m:dynMark(dyn),d:dyn,t:S.t};
+  if(dyn>.84&&!S.mute) rockHit(x,dyn);
+}
+function spawnRipple(i,dyn,dir,x,dead){
+  const t=i/5, max=(1.0-.74*t)*W*(.45+.55*dyn)*(S.mute?.45:1)*(dead?.3:1);
+  rip.push({x:clamp(x,W*.05,W*.95),y:boatY()+(dir>0?24:-44),r:4,max,sp:(170+260*(1-t))+220*dyn,dyn,t,acc:MODES[S.mode].accent});
+  if(rip.length>90) rip.shift();
+}
+function rockHit(x,dyn){
+  const k=(dyn-.84)/.16; S.flash=Math.max(S.flash,(.22+.3*k)*(reduce?.4:1)); S.flashCol=MODES[S.mode].accent;
+  S.shake=Math.max(S.shake,reduce?0:7+8*k);
+  splash(clamp(x,W*.05,W*.95),boatY()+10,14+k*16,.7+k*.4);
+  for(let j=0;j<10;j++) lines.push({x:clamp(x,W*.05,W*.95),y:boatY(),a:rand(-Math.PI,0),l:rand(60,200),life:1,c:j%3?VOLT:INK});
+}
+function splash(x,y,n,pow){
+  const acc=MODES[S.mode].accent;
+  for(let i=0;i<n;i++){const a=rand(-Math.PI*.95,-Math.PI*.05),v=rand(120,520)*pow;
+    parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:rand(1.5,6)*pow,life:1,dec:rand(.6,1.3),c:Math.random()<.22?acc:Math.random()<.1?VOLT:INK})}
+}
+function evaluateStrum(){
+  if(S.finale) return; const ch=S.chord; if(!SEQ.includes(ch)) return;
+  const o=obj(ch);
+  if(ch===SEQ[S.progress]){
+    if(!o.found){o.res=1;banner('어딘가에서 등불이 떨렸다','soft',1700);return}
+    o.lit=true; S.progress++; pullThorn(THORN_OF[ch]);
+    const p=pos(o); splash(p.x,p.y-20,24,.8); S.flash=Math.max(S.flash,reduce?.1:.28); S.flashCol=MODES[S.mode].accent;
+    if(S.progress===4) startFinale(); else banner(`${CHORDS[ch].label} 등불 · ${S.progress} / 4`,'soft',1500);
+    updateHud();
+  } else if(!o.lit){
+    o.res=1;
+    if(S.progress>0){ resetProgress(); banner('순서가 흐트러졌다','soft',1600) }
+  }
+}
+function pullThorn(i){const th=thorns[i];if(th.gone)return;th.gone=true;th.fly={t:S.t,vx:rand(-60,60),vy:-rand(140,220),rot:rand(-4,4)}}
+function resetProgress(){S.progress=0;SEQ.forEach(c=>obj(c).lit=false);thorns.forEach(t=>{t.gone=false;t.fly=null});updateHud()}
+function startFinale(){
+  S.finale=S.t; S.sailT=1; S.flash=reduce?.4:1; S.flashCol=MODES[S.mode].accent; S.shake=reduce?0:26;
+  splash(W/2,boatY(),150,1.25);
+  for(let j=0;j<26;j++) lines.push({x:W/2,y:boatY()-40,a:rand(-Math.PI,Math.PI),l:rand(120,Math.max(W,H)*.6),life:1.4,c:j%3?VOLT:INK});
+  CHORDS.F.v.forEach((m,i)=>setTimeout(()=>{playNote(m,1);str[i].amp=15;str[i].hot=1},i*22));
+  setTimeout(()=>banner('돛이 펴졌다','rock',3400),120);
+  updateHud();
+}
+
+/* ---------- input ---------- */
+let ptr=null;
+const inSpan=x=>x>=sx0()-6&&x<=sx1()+6;
+cv.addEventListener('pointerdown',e=>{
+  if(!started) return; cv.setPointerCapture(e.pointerId);
+  ptr={x:e.clientX,y:e.clientY,t:performance.now(),v:0,hits:0,done:false,last:{}};
+  for(let i=0;i<6;i++) if(Math.abs(e.clientY-stringY(i))<7&&inSpan(e.clientX)){pluck(i,.26,1,e.clientX);ptr.last[i]=ptr.t;ptr.hits++;break}
+});
+cv.addEventListener('pointermove',e=>{
+  if(!ptr) return; const now=performance.now(), x=e.clientX, y=e.clientY, dy=y-ptr.y, dt=Math.max(1,now-ptr.t);
+  ptr.v=ptr.v*.55+(Math.hypot(x-ptr.x,dy)/dt)*.45;
+  if(dy!==0){
+    const dir=dy>0?1:-1, order=dir>0?[0,1,2,3,4,5]:[5,4,3,2,1,0];
+    for(const i of order){const sy=stringY(i);
+      if((ptr.y<sy&&y>=sy)||(ptr.y>sy&&y<=sy)){const cx=ptr.x+(x-ptr.x)*((sy-ptr.y)/dy);
+        if(!inSpan(cx)) continue; if(ptr.last[i]&&now-ptr.last[i]<45) continue;
+        ptr.last[i]=now; pluck(i,dynFrom(ptr.v),dir,cx); ptr.hits++}}
+  }
+  ptr.x=x;ptr.y=y;ptr.t=now;
+  if(ptr.hits>=3&&!ptr.done){ptr.done=true;evaluateStrum()}
+});
+const endPtr=()=>{ptr=null}; cv.addEventListener('pointerup',endPtr); cv.addEventListener('pointercancel',endPtr);
+
+const LETTERS=new Set('QWERASDFZXCV'.split(''));
+addEventListener('keydown',e=>{
+  if(e.key==='Shift'){S.mute=true;return}
+  if(/^Digit[1-4]$/.test(e.code)){setMode(['rock','acoustic','strings','korean'][+e.code.slice(5)-1]);return}
+  const k=e.code.startsWith('Key')?e.code.slice(3):''; if(!LETTERS.has(k)||e.repeat) return;
+  S.held.add(k); resolveChord();
+});
+addEventListener('keyup',e=>{if(e.key==='Shift'){S.mute=false;return}const k=e.code.startsWith('Key')?e.code.slice(3):'';if(S.held.delete(k))resolveChord()});
+addEventListener('blur',()=>{S.held.clear();S.mute=false;resolveChord()});
+function resolveChord(){
+  let best=null,bs=0;
+  for(const [k,c] of Object.entries(CHORDS)) if(c.keys.length&&c.keys.every(x=>S.held.has(x))&&c.keys.length>bs){best=k;bs=c.keys.length}
+  const nc=best||S.sticky||'open'; if(nc!==S.chord){S.chord=nc;S.seal=1}
+  updateChips();
+}
+
+/* ---------- HUD ---------- */
+const chipOrder=['Db','Eb','Cm7','F','Ab','|','C','D'];
+const chipsEl=$('#chips');
+chipsEl.innerHTML=chipOrder.map(k=>k==='|'?'<span class="sep"></span>':
+  `<button class="chip${CHORDS[k].oos?' oos':''}" data-ch="${k}" aria-label="${CHORDS[k].label} 코드: ${CHORDS[k].keys.join(' ')}"><b>${CHORDS[k].label}</b><span class="keys">${CHORDS[k].keys.map(x=>`<kbd data-k="${x}">${x}</kbd>`).join('')}</span></button>`).join('');
+chipsEl.addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const k=b.dataset.ch;S.sticky=S.sticky===k?null:k;resolveChord()});
+function updateChips(){
+  chipsEl.querySelectorAll('.chip').forEach(b=>{b.classList.toggle('active',b.dataset.ch===S.chord);b.classList.toggle('sticky',b.dataset.ch===S.sticky)});
+  chipsEl.querySelectorAll('kbd').forEach(k=>k.classList.toggle('on',S.held.has(k.dataset.k)));
+}
+document.querySelectorAll('.modes button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+function setMode(m){S.mode=m;document.querySelectorAll('.modes button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));document.documentElement.style.setProperty('--accent',MODES[m].accent)}
+function updateHud(){
+  const f=SEQ.filter(c=>obj(c).found).length; $('#found').textContent=`발견 ${f} / 4 · 점등 ${S.progress} / 4`;
+  $('#objText').textContent=S.finale?'첫 번째 돛 완성. 음색을 바꿔 같은 코드를 다시 울려 보세요':'안개 속 등불 넷을 찾아, 곡의 순서대로 울리세요';
+}
+$('#reset').addEventListener('click',()=>{S.finale=null;S.sailT=0;resetProgress();OBJ.forEach(o=>{o.vis=0;o.detail=0;o.found=false;o.res=0});updateHud();banner('다시, 안개 속으로','soft',1400)});
+let bt; function banner(txt,kind,ms){const b=$('#banner');b.textContent=txt;b.className='banner '+kind;void b.offsetWidth;b.classList.add('show');clearTimeout(bt);bt=setTimeout(()=>b.classList.remove('show'),ms)}
+
+/* ---------- update ---------- */
+function update(dt){
+  S.t+=dt;
+  for(const s of str){s.amp*=Math.exp(-dt*3);s.ph+=dt*38}
+  for(const r of rip){
+    r.r+=r.sp*dt; const k=1-r.r/r.max, band=22+30*(1-r.t);
+    for(const o of OBJ){ if(o.kind==='lamp'&&o.lit) continue;
+      const p=pos(o), d=Math.hypot(p.x-r.x,(p.y-r.y)/.36); if(Math.abs(d-r.r)>band) continue;
+      if(o.pp){
+        if(r.dyn<.24) o.vis=Math.min(1,o.vis+dt*3.2*k);
+        else if(r.dyn>.8&&o.vis>.08){scatterWhisper(o);o.vis=0}
+        continue;
+      }
+      o.vis=Math.max(o.vis,.3+.7*k);
+      if(r.t>.55) o.detail=Math.max(o.detail,Math.min(1,k*1.5*r.t));
+      if(o.kind==='lamp'&&!o.found&&o.detail>.55){o.found=true;banner(`등불 발견 · ${o.hint&&false?o.hint:CHORDS[o.chord].label}`,'soft',1500);updateHud()}
+    }
+  }
+  rip=rip.filter(r=>r.r<r.max);
+  for(const o of OBJ){o.vis=Math.max(0,o.vis-dt*(o.pp?.07:.16));o.detail=Math.max(0,o.detail-dt*.22);o.res=Math.max(0,o.res-dt*.55)}
+  for(const p of parts){p.vy+=900*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.985;p.life-=dt*p.dec}
+  parts=parts.filter(p=>p.life>0&&p.y<H+20);
+  for(const l of lines) l.life-=dt*3.2; lines=lines.filter(l=>l.life>0);
+  S.flash=Math.max(0,S.flash-dt*2.2); S.shake*=Math.exp(-dt*9); S.seal=Math.max(0,S.seal-dt*4);
+  S.sail+=(S.sailT-S.sail)*Math.min(1,dt*2.4);
+}
+function scatterWhisper(o){const p=pos(o);for(let i=0;i<40;i++){const a=rand(-Math.PI,0),v=rand(60,260);
+  parts.push({x:p.x+rand(-110,110),y:p.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,r:rand(1.5,3.5),life:1,dec:.7,c:MODES[S.mode].accent})}
+  banner('세게 울리자 흩어져 버렸다','soft',1600)}
+
+/* ---------- draw ---------- */
+function draw(){
+  ctx.drawImage(paper,0,0,W,H);
+  ctx.save();
+  if(S.shake>.3) ctx.translate(rand(-S.shake,S.shake),rand(-S.shake,S.shake));
+  const acc=MODES[S.mode].accent;
+  // far mountains (always visible, faint)
+  for(const m of mountains){const g=ctx.createLinearGradient(0,hz()-H*.12,0,hz()+4);g.addColorStop(0,`rgba(23,20,15,${m.al})`);g.addColorStop(1,'rgba(23,20,15,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-20,hz()+6);m.pts.forEach(([x,y])=>ctx.lineTo(x,y));ctx.lineTo(W+20,hz()+6);ctx.fill()}
+  ctx.strokeStyle='rgba(23,20,15,.35)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(0,hz()+2);ctx.lineTo(W,hz()+2);ctx.stroke();
+  OBJ.filter(o=>o.kind==='isle').forEach(drawIsle);
+  // sea strokes
+  ctx.strokeStyle=INK;ctx.lineCap='round';
+  for(const s of seaStrokes){const xx=s.x+Math.sin(S.t*.55+s.ph)*10*(.3+s.d);ctx.globalAlpha=s.a;ctx.lineWidth=s.w;ctx.beginPath();ctx.moveTo(xx,s.y);ctx.quadraticCurveTo(xx+s.len/2,s.y-1.6*s.w,xx+s.len,s.y);ctx.stroke()}
+  ctx.globalAlpha=1;
+  drawRipples();
+  OBJ.forEach(o=>{if(o.kind==='lamp')drawLamp(o);else if(o.kind==='refl')drawRefl(o);else if(o.kind==='whisper')drawWhisper(o)});
+  drawBoat(acc);
+  drawMist();
+  // speed lines
+  for(const l of lines){ctx.globalAlpha=Math.min(1,l.life);ctx.strokeStyle=l.c;ctx.lineWidth=l.c===INK?2.5:4;const r0=30;ctx.beginPath();
+    ctx.moveTo(l.x+Math.cos(l.a)*r0,l.y+Math.sin(l.a)*r0);ctx.lineTo(l.x+Math.cos(l.a)*(r0+l.l*(1.2-l.life*.4)),l.y+Math.sin(l.a)*(r0+l.l*(1.2-l.life*.4)));ctx.stroke()}
+  // ink drops
+  for(const p of parts){ctx.globalAlpha=Math.min(1,p.life*1.4);ctx.fillStyle=p.c;const sp=Math.min(3,Math.hypot(p.vx,p.vy)/180);
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(p.vy,p.vx));ctx.beginPath();ctx.ellipse(0,0,p.r*(1+sp),p.r,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+  ctx.globalAlpha=1;
+  if(S.flash>.01){ctx.globalCompositeOperation='multiply';ctx.globalAlpha=S.flash*.75;ctx.fillStyle=S.flashCol;ctx.fillRect(-40,-40,W+80,H+80);
+    ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1}
+  drawStrings(acc);
+  drawScore(acc);
+  drawDyn(acc);
+  ctx.restore();
+}
+function drawIsle(o){
+  if(o.vis<.01) return; const p=pos(o), w=Math.min(W*.3,260)*o.s, h=w*.5;
+  ctx.save();ctx.translate(p.x,p.y);
+  const g=ctx.createLinearGradient(0,-h,0,4);g.addColorStop(0,`rgba(23,20,15,${.85*o.vis})`);g.addColorStop(.75,`rgba(23,20,15,${.35*o.vis})`);g.addColorStop(1,'rgba(23,20,15,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-w/2,4);o.pts.forEach(([u,v])=>ctx.lineTo(-w/2+u*w,-v*h));ctx.lineTo(w/2,4);ctx.fill();
+  ctx.strokeStyle=`rgba(23,20,15,${.7*o.vis})`;ctx.lineWidth=2;ctx.beginPath();o.pts.forEach(([u,v],i)=>{const x=-w/2+u*w,y=-v*h;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+  // pines along the ridge, a thin-string detail
+  if(o.detail>.05){ctx.globalAlpha=o.detail;ctx.fillStyle=INK;o.pts.slice(2,8).forEach(([u,v],i)=>{const x=-w/2+u*w,y=-v*h;ctx.beginPath();ctx.moveTo(x,y-10-i%2*4);ctx.lineTo(x-4,y+1);ctx.lineTo(x+4,y+1);ctx.fill()})}
+  ctx.globalAlpha=o.vis*.22;ctx.scale(1,-.28);ctx.fillStyle=INK;ctx.beginPath();ctx.moveTo(-w/2,-4);o.pts.forEach(([u,v])=>ctx.lineTo(-w/2+u*w,-v*h));ctx.lineTo(w/2,-4);ctx.fill();
+  ctx.restore();
+}
+function drawRipples(){
+  ctx.save();ctx.beginPath();ctx.rect(0,hz()+2,W,sb()-hz()+10);ctx.clip();
+  for(const r of rip){const k=1-r.r/r.max, a=k*(.18+.55*r.dyn+.12);
+    ctx.strokeStyle=INK;ctx.globalAlpha=a;ctx.lineWidth=.8+(1-r.t)*2.4+r.dyn*2.2;ctx.beginPath();ctx.ellipse(r.x,r.y,r.r,r.r*.36,0,0,Math.PI*2);ctx.stroke();
+    ctx.globalAlpha=a*.45;ctx.lineWidth=.7;ctx.beginPath();ctx.ellipse(r.x,r.y,r.r*.9,r.r*.324,0,0,Math.PI*2);ctx.stroke();
+    if(r.dyn>.62){ctx.strokeStyle=r.acc;ctx.globalAlpha=k*(r.dyn-.5)*1.6;ctx.lineWidth=1.6+r.dyn*2;ctx.beginPath();ctx.ellipse(r.x,r.y,r.r*.96,r.r*.346,0,0,Math.PI*2);ctx.stroke()}
+  }
+  ctx.restore();ctx.globalAlpha=1;
+}
+function drawLamp(o){
+  const p=pos(o), acc=MODES[S.mode].accent, a=Math.max(o.vis,o.lit?1:0,o.found?.32:0);
+  if(o.res>.01){const pulse=.5+.5*Math.sin(S.t*14);ctx.globalAlpha=o.res*(.25+.25*pulse);const g=ctx.createRadialGradient(p.x,p.y-20,2,p.x,p.y-20,70);g.addColorStop(0,acc);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(p.x-70,p.y-90,140,140)}
+  if(a<.01){ctx.globalAlpha=1;return}
+  ctx.save();ctx.translate(p.x,p.y+Math.sin(S.t*1.6+p.x)*1.5);
+  if(o.lit){const g=ctx.createRadialGradient(0,-26,2,0,-26,58);g.addColorStop(0,acc);g.addColorStop(.4,acc+'66');g.addColorStop(1,'rgba(0,0,0,0)');ctx.globalAlpha=.85+.15*Math.sin(S.t*3);ctx.fillStyle=g;ctx.fillRect(-60,-86,120,120);
+    ctx.globalAlpha=.55;ctx.strokeStyle=acc;ctx.lineWidth=3;ctx.beginPath();for(let y=4;y<70;y+=3)ctx.lineTo(Math.sin(y*.35+S.t*4)*3,y);ctx.stroke()}
+  ctx.globalAlpha=a;ctx.fillStyle=INK;
+  ctx.beginPath();ctx.ellipse(0,2,14,3.5,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(-5,-26);ctx.lineTo(5,-26);ctx.lineTo(7,0);ctx.fill();
+  ctx.beginPath();ctx.moveTo(-11,-26);ctx.lineTo(0,-38);ctx.lineTo(11,-26);ctx.fill();
+  ctx.fillStyle=o.lit?VOLT:PAPER;ctx.fillRect(-3.5,-22,7,8);
+  const showName=o.lit||o.found||o.detail>.15, lab=(o.hint&&!showName)?o.hint:CHORDS[o.chord].label;
+  const la=o.lit?1:showName?Math.max(o.detail,o.found?.65:0)*a:(o.hint?a:0);
+  if(la>.02){ctx.globalAlpha=la;ctx.font=`${o.lit?34:28}px ${BRUSH}`;ctx.textAlign='center';
+    if(o.lit){ctx.lineWidth=5;ctx.strokeStyle=INK;ctx.strokeText(lab,0,-46);ctx.fillStyle=VOLT}else ctx.fillStyle=INK;ctx.fillText(lab,0,-46)}
+  ctx.restore();ctx.globalAlpha=1;
+}
+function drawRefl(o){
+  const v=Math.min(o.vis,o.detail); if(v<.02) return; const p=pos(o);
+  ctx.save();ctx.translate(p.x+Math.sin(S.t*2)*2,p.y);ctx.scale(1,-1);ctx.globalAlpha=v*.55;ctx.fillStyle=INK_SOFT;ctx.strokeStyle=INK_SOFT;
+  // one seated figure holding a guitar. The bow sleeper casts nothing.
+  ctx.beginPath();ctx.arc(14,-34,6,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.moveTo(8,-27);ctx.quadraticCurveTo(2,-10,6,-2);ctx.lineTo(24,-2);ctx.quadraticCurveTo(24,-16,20,-27);ctx.fill();
+  ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-4,-8);ctx.lineTo(34,-26);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(2,-8,7,5,-.4,0,Math.PI*2);ctx.fill();
+  ctx.restore();ctx.globalAlpha=1;
+}
+function drawWhisper(o){
+  if(o.vis<.02) return; const p=pos(o), txt='아주 여리게 · 나는 여기 있어';
+  ctx.save();ctx.font=`${Math.min(30,W/15)}px ${BRUSH}`;ctx.textAlign='center';
+  const w=ctx.measureText(txt).width; let x=p.x-w/2;
+  ctx.textAlign='left';for(const ch of txt){const cw=ctx.measureText(ch).width;ctx.globalAlpha=o.vis*(.55+.25*Math.sin(S.t*2+x*.05));ctx.fillStyle=INK_SOFT;ctx.fillText(ch,x,p.y+Math.sin(S.t*1.4+x*.03)*2);x+=cw}
+  ctx.globalAlpha=o.vis;ctx.fillStyle=MODES[S.mode].accent;ctx.fillRect(p.x+w/2+8,p.y-16,10,10);
+  ctx.restore();ctx.globalAlpha=1;
+}
+function drawBoat(acc){
+  const bx=W/2, by=boatY()+Math.sin(S.t*1.1)*3, s=clamp(W/900,.62,1.15);
+  ctx.save();ctx.translate(bx,by);ctx.rotate(Math.sin(S.t*.9)*.025);ctx.scale(s,s);
+  ctx.globalAlpha=.18;ctx.fillStyle=INK;ctx.beginPath();ctx.ellipse(0,10,112,9,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  // sail
+  if(S.sail>.01){const p=S.sail;ctx.fillStyle='rgba(234,230,222,.96)';ctx.strokeStyle=INK;ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(12,-128);ctx.quadraticCurveTo(12+110*p,-80,12+70*p,-16);ctx.lineTo(12,-16);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle=acc;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(14,-122);ctx.quadraticCurveTo(12+100*p,-78,12+64*p,-20);ctx.stroke();
+    ctx.strokeStyle=INK;ctx.lineWidth=1.2;for(let k=1;k<4;k++){ctx.beginPath();ctx.moveTo(12,-128+k*27);ctx.lineTo(12+(60+20*Math.sin(k))*p,-128+k*29);ctx.stroke()}}
+  ctx.strokeStyle=INK;ctx.lineCap='round';ctx.lineWidth=3.5;ctx.beginPath();ctx.moveTo(12,-6);ctx.lineTo(12,-132);ctx.stroke();
+  if(S.sail<.2){ctx.lineWidth=9;ctx.globalAlpha=1-S.sail*5;ctx.beginPath();ctx.moveTo(14,-118);ctx.lineTo(14,-40);ctx.stroke();ctx.globalAlpha=1}
+  // sleeper at the bow, with a sash in the accent color
+  ctx.fillStyle=INK;ctx.beginPath();ctx.arc(-74,-13,7,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(-46,-9,26,7,.04,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=acc;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-54,-15);ctx.quadraticCurveTo(-44,-4,-30,-12);ctx.stroke();
+  // hull: one loaded brush stroke
+  ctx.fillStyle=INK;ctx.beginPath();ctx.moveTo(-104,-10);ctx.quadraticCurveTo(-60,4,0,0);ctx.quadraticCurveTo(60,4,100,-14);
+  ctx.quadraticCurveTo(80,18,0,20);ctx.quadraticCurveTo(-78,18,-104,-10);ctx.fill();
+  ctx.strokeStyle='rgba(234,230,222,.35)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-80,6);ctx.quadraticCurveTo(0,13,78,2);ctx.stroke();
+  ctx.restore();
+}
+const mist=[...Array(8)].map((_,i)=>({u:Math.random(),v:rand(.05,.85),r:rand(.18,.38),sp:rand(.004,.012)*(i%2?1:-1)}));
+function drawMist(){
+  for(const m of mist){m.u=(m.u+m.sp*.016+1.4)%1.4-.2;const x=m.u*W,y=hz()+(sb()-hz())*m.v,r=m.r*Math.max(W,H);
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(234,230,222,.62)');g.addColorStop(1,'rgba(234,230,222,0)');
+    ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
+}
+function drawStrings(acc){
+  const top=H*.675;
+  ctx.fillStyle='rgba(23,20,15,.045)';ctx.fillRect(0,top,W,H-top);
+  ctx.strokeStyle=INK;ctx.lineCap='round';ctx.globalAlpha=.75;ctx.lineWidth=3;ctx.beginPath();
+  for(let x=0;x<=W;x+=12)ctx.lineTo(x,top+Math.sin(x*.04)*1.2+Math.sin(x*.13)*.6);ctx.stroke();ctx.globalAlpha=1;
+  const x0=sx0(),x1=sx1();
+  ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x0,stringY(0)-10);ctx.lineTo(x0,stringY(5)+10);ctx.moveTo(x1,stringY(0)-10);ctx.lineTo(x1,stringY(5)+10);ctx.stroke();
+  for(let i=0;i<6;i++){
+    const y=stringY(i), s=str[i], th=lerp(4.4,1.3,i/5), N=56;
+    const path=()=>{ctx.beginPath();for(let k=0;k<=N;k++){const u=k/N;const d=s.amp*Math.sin(Math.PI*u)*Math.cos(s.ph)+s.amp*.3*Math.sin(2*Math.PI*u)*Math.cos(s.ph*1.9);k?ctx.lineTo(lerp(x0,x1,u),y+d):ctx.moveTo(x0,y)}};
+    ctx.strokeStyle=INK;ctx.globalAlpha=.92;ctx.lineWidth=th;path();ctx.stroke();
+    ctx.globalAlpha=.25;ctx.lineWidth=th*.5;ctx.setLineDash([26,7,10,5]);ctx.lineDashOffset=i*13;ctx.save();ctx.translate(0,th*.45);path();ctx.stroke();ctx.restore();ctx.setLineDash([]);
+    if(s.hot>.62&&s.amp>1.2){ctx.globalAlpha=clamp(s.amp/9,0,1)*(s.hot-.4);ctx.strokeStyle=acc;ctx.lineWidth=th+2;ctx.shadowColor=acc;ctx.shadowBlur=14;path();ctx.stroke();ctx.shadowBlur=0}
+    ctx.globalAlpha=.5;ctx.fillStyle=INK;ctx.font=`10px ${MONO}`;ctx.textAlign='left';ctx.fillText(String(6-i),x0+6,y-5);
+  }
+  ctx.globalAlpha=1;
+}
+function drawScore(acc){
+  const sx=Math.max(16,W*.03), sy=sb()-34, pop=1+S.seal*.35, c=CHORDS[S.chord];
+  ctx.save();ctx.translate(sx+30,sy+30);ctx.rotate(-.06);ctx.scale(pop,pop);
+  if(S.chord==='open'){ctx.strokeStyle=INK;ctx.lineWidth=2.5;ctx.strokeRect(-28,-28,56,56);ctx.fillStyle=INK;ctx.font=`26px ${BRUSH}`}
+  else{ctx.fillStyle=acc;ctx.fillRect(-29,-29,58,58);ctx.strokeStyle=INK;ctx.lineWidth=2;ctx.strokeRect(-29,-29,58,58);ctx.fillStyle=PAPER;ctx.font=`${c.label.length>2?28:36}px ${BRUSH}`}
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(c.label,0,2);ctx.restore();
+  // key signature: four flats are four thorns
+  const kx=sx+76, ky=sy+12, gap=7, w=118;
+  ctx.strokeStyle=INK;ctx.globalAlpha=.6;ctx.lineWidth=1;for(let l=0;l<5;l++){ctx.beginPath();ctx.moveTo(kx,ky+l*gap);ctx.lineTo(kx+w,ky+l*gap+Math.sin(l)*.6);ctx.stroke()}
+  ctx.globalAlpha=1;ctx.font=`22px "Gowun Batang",serif`;ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  thorns.forEach((t,i)=>{let x=kx+14+i*15,y=ky+t.p*gap+5,rot=0,a=1,col=INK;
+    if(t.fly){const e=S.t-t.fly.t;if(e>1.6)return;x+=t.fly.vx*e;y+=t.fly.vy*e+260*e*e;rot=t.fly.rot*e;a=1-e/1.6;col=acc}
+    ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha=a;ctx.fillStyle=col;ctx.fillText('♭',0,0);ctx.restore()});
+  const left=thorns.filter(t=>!t.gone).length;
+  ctx.globalAlpha=.65;ctx.fillStyle=INK;ctx.font=`10px ${MONO}`;ctx.textAlign='left';ctx.fillText(left?`가시 ${left}`:'가시 없음',kx+w+8,ky+gap*2.6);ctx.globalAlpha=1;
+}
+function drawDyn(acc){
+  if(!S.dyn) return; const e=S.t-S.dyn.t; if(e>1.3) return; const a=1-e/1.3, m=S.dyn.m, loud=m==='ff'||m==='f';
+  const x=W-Math.max(20,W*.04), y=sb()+2;
+  ctx.save();ctx.translate(x,y);ctx.textAlign='right';ctx.textBaseline='alphabetic';ctx.globalAlpha=a;
+  if(m==='ff'){ctx.rotate(-.12);const sc=1+Math.max(0,.4-e)*1.2;ctx.scale(sc,sc);ctx.font=`72px ${BRUSH}`;ctx.lineWidth=8;ctx.strokeStyle=INK;ctx.strokeText('ff',0,0);ctx.fillStyle=VOLT;ctx.fillText('ff',0,0);
+    ctx.fillStyle=acc;ctx.fillRect(-60,6,62,6)}
+  else{ctx.font=`italic ${loud?52:m==='pp'?34:42}px "Gowun Batang",serif`;ctx.fillStyle=m==='pp'?INK_SOFT:INK;ctx.globalAlpha=a*(m==='pp'?.6:.9);ctx.fillText(m,0,0)}
+  ctx.restore();
+}
+
+/* ---------- loop ---------- */
+let last=performance.now();
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(frame)}
+addEventListener('resize',resize);
+resize(); updateChips(); updateHud(); requestAnimationFrame(frame);
+document.fonts&&document.fonts.load(`30px "Nanum Brush Script"`).catch(()=>{});
+$('#go').addEventListener('click',()=>{
+  try{initAudio();AC.resume&&AC.resume()}catch(e){}
+  started=true;$('#start').hidden=true;
+  setTimeout(()=>banner('아래 여섯 줄을 긁어 보세요','soft',2000),300);
+});
+})();
+</script>
