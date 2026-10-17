@@ -26,9 +26,16 @@ export function setTempo(bpm: number, groove: Groove) {
 /** 지금이 몇 번째 박인지 (소수) */
 export const beatPos = (t = now()) => (t - S.clock0) / spb();
 
-/** 가장 가까운 박과 그 박에서 몇 초 벗어났는지 */
+/** 소리가 스피커·헤드폰에서 실제로 나오기까지 걸리는 시간. 사람은 들은 소리에 맞춰 치므로 판정에서 뺀다 */
+function latency() {
+  const o = audioOut();
+  if (!o) return 0;
+  return Math.min(0.15, (o.ac.outputLatency || 0) + (o.ac.baseLatency || 0));
+}
+
+/** 가장 가까운 박과 그 박에서 몇 초 벗어났는지 (출력 지연 보정) */
 export function nearestBeat(t = now()) {
-  const b = beatPos(t), n = Math.round(b);
+  const b = beatPos(t - latency()), n = Math.round(b);
   return { n, off: (b - n) * spb() };
 }
 
