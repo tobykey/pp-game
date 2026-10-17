@@ -18,7 +18,8 @@ export function setTempo(bpm: number, groove: Groove) {
   }
   S.bpm = bpm;
   S.groove = groove;
-  groove0 = Math.max(0, Math.ceil((t - S.clock0) / spb() - 0.01));
+  // 그루브는 '지금 다음에 오는 첫 박'부터 센다 (박 바로 위에서 바뀌어도 첫 마디를 건너뛰지 않게)
+  groove0 = Math.max(0, Math.floor((t - S.clock0) / spb()) + 1);
   lastStep = Math.floor((t - S.clock0) / (spb() / 4));
   lastBeat = Math.floor((t - S.clock0) / spb());
 }
@@ -81,6 +82,15 @@ function playStep(i: number, at: number, step: number) {
       if (sub === 0) kick(at, 0.8);
       hat(at, sub === 0 ? 0.7 : 0.4);
       break;
+    case 'verse': {
+      // 1절: 기타 없이 드럼과 베이스만. 8분 하이햇, 스네어 2·4박, 엇박 킥, 낮은 음역 베이스
+      if (sub % 2 === 0) hat(at, sub === 0 ? 0.7 : 0.45, sub === 2 && inBar === 3);
+      if (sub === 0 && inBar === 0) kick(at);
+      if (sub === 2 && (inBar === 1 || inBar === 2)) kick(at, 0.75);
+      if (sub === 0 && (inBar === 1 || inBar === 3)) snare(at, 0.85);
+      if (sub % 2 === 0) { const c = barChord?.(bar) ?? S.chord; bass(at, c === 'Fm' ? 29 : ROOT[c], step * 2, 1.1); }
+      break;
+    }
     case 'chorus': {
       // 후렴: 8분 하이햇, 스네어 2·4박, 킥 1·3박(+엇박 하나), 프레이즈 첫 마디 크래시, 베이스 8분음표 근음
       if (sub % 2 === 0) hat(at, sub === 0 ? 0.9 : 0.6, sub === 2 && inBar === 3);

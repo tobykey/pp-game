@@ -2,7 +2,7 @@
 import { CHORDS, type ChordId } from '../data/chords';
 import { MODES } from '../data/modes';
 import {
-  BEAT_WINDOW, CHORUS_BARS, CHORUS_SPEED, HOOK_SEQ, LAMP_X, ROW_DIST, STEPS, TEXT, type StepId,
+  BEAT_WINDOW, CHORUS_BARS, CHORUS_SPEED, HOOK_SEQ, INTERLUDE_BARS, LAMP_X, ROW_DIST, STEPS, TEXT, VERSE_BARS, type StepId,
 } from '../data/chapter0';
 import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
@@ -230,13 +230,68 @@ const island: StepHandler = {
 
 const end: StepHandler = {
   enter() { ink(null); S.cruise = 0; banner(TEXT.chapterEnd, 'soft', 4000); },
-  update() { const g = obj('isleGoal'); g.vis = Math.max(g.vis, 1); g.detail = Math.max(g.detail, 0.4); },
+  update(_dt, el) {
+    const g = obj('isleGoal'); g.vis = Math.max(g.vis, 1); g.detail = Math.max(g.detail, 0.4);
+    once('next', el > 5, () => ink(TEXT.toChapter1));
+  },
+  pluck() { if (done.has('next')) go('c1interlude'); },
+};
+
+// ---------- 챕터 1 맛보기 (결정 확인용): 간주 8마디 → 1절 8마디, 1절에서는 기타가 울리지 않는다 ----------
+
+/** 마디마다 코드를 자동으로 잡아 주며 노를 젓는 구간 (간주·1절 공용) */
+function barSection(bars: ChordId[], groove: 'chorus' | 'verse', next: StepId, onBar?: (bar: number, c: ChordId) => void): StepHandler {
+  let finished = false;
+  return {
+    enter() {
+      finished = false;
+      setTempo(130, groove);
+      setBarChord(bar => bars[bar] ?? null);
+      S.cruise = 0.06;
+    },
+    update() { S.vel = Math.min(S.vel, 0.17); },
+    beat(n) {
+      if (finished) return;
+      const gb = grooveBeat(n), bar = Math.floor(gb / 4);
+      if (gb < 0 || gb % 4 !== 0) return;
+      if (bar < bars.length) {
+        const c = bars[bar];
+        S.forced = c; resolveChord();
+        setProgress(`${CHORDS[c].label} · ${bar + 1} / ${bars.length}`);
+        onBar?.(bar, c);
+      } else { finished = true; go(next); }
+    },
+    stroke(s) { row(s.dir, 0.6); },
+  };
+}
+
+const c1interlude = barSection(INTERLUDE_BARS, 'chorus', 'c1verse', (_bar, c) => {
+  if (c === 'F') { S.flash = Math.max(S.flash, reduceMotion ? 0.06 : 0.3); S.flashCol = PINK; }
+});
+const c1interEnter = c1interlude.enter!;
+c1interlude.enter = () => { c1interEnter(); unlock(['Fsus4']); ink(null); };
+
+const c1verse = barSection(VERSE_BARS, 'verse', 'c1end', bar => {
+  if (bar === 2) ink(TEXT.verseSilence);
+  if (bar === 6) ink(null);
+});
+const c1verseEnter = c1verse.enter!;
+c1verse.enter = () => { c1verseEnter(); S.silence = true; unlock(['Fm', 'C']); };
+
+const c1end: StepHandler = {
+  enter() {
+    setTempo(65, 'heart');
+    S.silence = false; S.forced = null; resolveChord(); setBarChord(null);
+    S.cruise = 0;
+    ink(TEXT.demoEnd);
+  },
 };
 
 // ---------- 공통 래퍼: 예약된 장면 전환 처리 ----------
 let currentEl = 0;
 const all: Record<StepId, StepHandler> = {
   wake, whisper, row: rowStep, lamps: lampsStep, hook, reflect, cloth: clothStep, chorus, island, end,
+  c1interlude, c1verse, c1end,
 };
 for (const h of Object.values(all)) {
   const enter = h.enter, update = h.update;

@@ -13,11 +13,12 @@ export function dynMark(d: number) { return d < 0.15 ? 'pp' : d < 0.3 ? 'p' : d 
 
 /** i: 줄 번호(0 = 6번 줄), dir: 1 다운 / -1 업, x: 긁은 위치 */
 export function pluck(i: number, dyn: number, dir: number, x: number) {
-  const midi = CHORDS[S.chord].v[i];
-  playNote(midi, dyn);
+  // 기타 침묵(1절): 줄은 먹먹하게 틱 소리만 내고, 파동도 짧다
+  const midi = S.silence ? null : CHORDS[S.chord].v[i];
+  playNote(midi, S.silence ? dyn * 0.4 : dyn);
   const s = str[i];
-  s.amp = Math.min(15, 2.5 + dyn * 14) * (S.mute ? 0.45 : 1); s.hot = dyn; s.ph = 0;
+  s.amp = Math.min(15, 2.5 + dyn * 14) * (S.mute ? 0.45 : 1) * (S.silence ? 0.3 : 1); s.hot = S.silence ? 0 : dyn; s.ph = 0;
   spawnRipple(i, dyn, dir, x, midi == null);
   S.dyn = { m: dynMark(dyn), d: dyn, t: S.t };
-  if (dyn > 0.84 && !S.mute) rockHit(x, dyn);
+  if (dyn > 0.84 && !S.mute && !S.silence) rockHit(x, dyn);
 }

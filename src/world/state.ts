@@ -7,7 +7,7 @@ import { seeded } from '../util/math';
 /** 화면 크기 (CSS 픽셀)와 화면 배율 */
 export const view = { W: 0, H: 0, DPR: 1 };
 
-export type Groove = 'none' | 'heart' | 'hook' | 'chorus';
+export type Groove = 'none' | 'heart' | 'hook' | 'chorus' | 'verse';
 
 export const S = {
   started: false,
@@ -71,6 +71,10 @@ export const S = {
   scrap: 0,
   /** 그 사람의 띠 길이 (천 조각을 얻으면 조금 짧아짐) */
   sash: 1, sashT: 1,
+  /** 기타 침묵 (1절): 줄을 긁어도 소리 대신 먹먹한 틱만 */
+  silence: false,
+  /** 화면에 보이는 침묵 정도 (줄이 흐려짐) */
+  hush: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }

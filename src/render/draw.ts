@@ -300,8 +300,10 @@ function drawMist() {
     m.u = (m.u + m.sp * 0.016 + 1.4) % 1.4 - 0.2;
     const u = wrap(m.u - S.boat * 0.6, -0.2, 1.2);
     const x = u * W, y = hz() + (sb() - hz()) * m.v, r = m.r * Math.max(W, H);
+    // 배 바로 위에 짙은 안개가 앉으면 주인공이 사라져 보여서, 배 근처 안개는 조금 옅게
+    const near = Math.hypot((x - boatX()) / W, (y - boatY()) / H) < 0.22 ? 0.5 : 1;
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(234,230,222,${0.62 * S.fog})`); g.addColorStop(1, 'rgba(234,230,222,0)');
+    g.addColorStop(0, `rgba(234,230,222,${0.62 * S.fog * near})`); g.addColorStop(1, 'rgba(234,230,222,0)');
     ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
 }
@@ -312,7 +314,8 @@ function drawStrings(acc: string) {
   ctx.save(); ctx.globalAlpha = S.stringsVis;
   const top = H * 0.675;
   ctx.fillStyle = 'rgba(23,20,15,.045)'; ctx.fillRect(0, top, W, H - top);
-  const base = S.stringsVis;
+  // 기타 침묵(1절)에는 줄이 흐려진다
+  const base = S.stringsVis * (1 - 0.55 * S.hush);
   ctx.strokeStyle = INK; ctx.lineCap = 'round'; ctx.globalAlpha = 0.75 * base; ctx.lineWidth = 3; ctx.beginPath();
   for (let x = 0; x <= W; x += 12) ctx.lineTo(x, top + Math.sin(x * 0.04) * 1.2 + Math.sin(x * 0.13) * 0.6);
   ctx.stroke(); ctx.globalAlpha = base;
