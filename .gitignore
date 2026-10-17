@@ -7,6 +7,9 @@ dist/
 # 원곡 음원 등 오디오 원본 — 저작권 검토 전까지 커밋 금지
 assets/audio-source/
 
+# 원곡 악보 PDF — 상업 악보라 저장소에 올리지 않음. 로컬에서만 참고
+assets/score-source/
+
 # 편집기·OS 잡동사니
 .DS_Store
 Thumbs.db
