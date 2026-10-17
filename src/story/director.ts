@@ -1,0 +1,63 @@
+// 장면 진행 관리: 지금 장면에 입력(줄 튕김·스트로크·박)을 전달하고, 장면을 바꾸고, 진행을 저장한다
+import type { ChordId } from '../data/chords';
+import { STEPS, type StepId } from '../data/chapter0';
+import { setTempo } from '../world/rhythm';
+import { S } from '../world/state';
+import { setMode, setObjective, setProgress } from '../ui/hud';
+
+export interface Stroke {
+  /** 1 다운, -1 업 */
+  dir: number;
+  dyn: number;
+  chord: ChordId;
+}
+
+export interface StepHandler {
+  enter?(): void;
+  /** el: 이 장면에 들어온 뒤 지난 시간 (초) */
+  update?(dt: number, el: number): void;
+  /** 줄을 3개 이상 한 방향으로 긁었을 때 (= 노 한 번, 코드 한 번) */
+  stroke?(s: Stroke): void;
+  /** 줄 하나라도 튕겼을 때 */
+  pluck?(): void;
+  /** 새 박이 시작될 때 */
+  beat?(n: number): void;
+}
+
+const SAVE_KEY = 'pp.ch0.step';
+let handlers = {} as Record<StepId, StepHandler>;
+let cur: StepHandler = {};
+let el = 0;
+
+export function registerSteps(h: Record<StepId, StepHandler>) { handlers = h; }
+
+export function go(id: StepId) {
+  const def = STEPS.find(s => s.id === id)!;
+  S.step = id;
+  el = 0;
+  setTempo(def.bpm, 'heart');
+  setMode(def.mode);
+  setObjective(def.objective);
+  setProgress('');
+  save(id);
+  cur = handlers[id];
+  cur.enter?.();
+}
+
+export const elapsed = () => el;
+
+export function updateStory(dt: number) { el += dt; cur.update?.(dt, el); }
+export function onStroke(s: Stroke) { if (S.started) cur.stroke?.(s); }
+export function onPluck() { if (S.started) cur.pluck?.(); }
+export function onBeat(n: number) { cur.beat?.(n); }
+
+/** 이어하기용 저장. 저장이 막힌 브라우저에서도 게임은 그대로 돈다 */
+function save(id: StepId) {
+  try { localStorage.setItem(SAVE_KEY, id); } catch { /* 무시 */ }
+}
+export function loadSaved(): StepId | null {
+  try {
+    const v = localStorage.getItem(SAVE_KEY) as StepId | null;
+    return v && STEPS.some(s => s.id === v) ? v : null;
+  } catch { return null; }
+}

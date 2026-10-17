@@ -5,6 +5,11 @@ import { lerp } from '../util/math';
 
 let AC: AudioContext | null = null;
 let bus: GainNode;
+/** 드럼·베이스·심장 소리가 나가는 출력 (기타 음색 체인을 거치지 않음) */
+let kitBus: GainNode;
+
+/** 소리가 준비됐으면 오디오 컨텍스트와 드럼 출력을 돌려준다 */
+export function audioOut() { return AC ? { ac: AC, out: kitBus } : null; }
 const chains = {} as Record<ModeId, GainNode>;
 const ksCache: Record<string, { buf: AudioBuffer; rate: number }[]> = {};
 
@@ -17,6 +22,8 @@ export function initAudio() {
   const rev = ac.createConvolver(); rev.buffer = impulse(ac, 3, 2.6);
   const rg = ac.createGain(); rg.gain.value = 0.3; rev.connect(rg); rg.connect(comp);
   bus = ac.createGain(); bus.connect(comp); bus.connect(rev);
+  kitBus = ac.createGain(); kitBus.gain.value = 0.9; kitBus.connect(comp);
+  { const g = ac.createGain(); g.gain.value = 0.12; kitBus.connect(g); g.connect(rev); }
 
   const send = (node: AudioNode, amt: number) => { const g = ac.createGain(); g.gain.value = amt; node.connect(g); g.connect(rev); };
   const bq = (type: BiquadFilterType, f: number, q = 0.7, gain = 0) => {

@@ -1,7 +1,7 @@
 // 파동, 먹 스플래시, 집중선, 섬광·흔들림 같은 순간 연출을 만들어 내는 함수들
 import { MODES } from '../data/modes';
 import { S, fx, view, type WorldObj } from '../world/state';
-import { boatY, pos } from '../world/geometry';
+import { boatY, pos, toWorldX } from '../world/geometry';
 import { clamp, rand } from '../util/math';
 import { INK, VOLT, reduceMotion } from './palette';
 
@@ -11,7 +11,7 @@ export function spawnRipple(i: number, dyn: number, dir: number, x: number, dead
   const t = i / 5;
   const max = (1.0 - 0.74 * t) * W * (0.45 + 0.55 * dyn) * (S.mute ? 0.45 : 1) * (dead ? 0.3 : 1);
   fx.rip.push({
-    x: clamp(x, W * 0.05, W * 0.95), y: boatY() + (dir > 0 ? 24 : -44), r: 4, max,
+    wx: toWorldX(clamp(x, W * 0.05, W * 0.95)), y: boatY() + (dir > 0 ? 24 : -44), r: 4, max,
     sp: (170 + 260 * (1 - t)) + 220 * dyn, dyn, t, acc: MODES[S.mode].accent,
   });
   if (fx.rip.length > 90) fx.rip.shift();
@@ -31,8 +31,8 @@ export function rockHit(x: number, dyn: number) {
 }
 
 /** 먹 방울이 위로 튀는 스플래시 */
-export function splash(x: number, y: number, n: number, pow: number) {
-  const acc = MODES[S.mode].accent;
+export function splash(x: number, y: number, n: number, pow: number, color?: string) {
+  const acc = color ?? MODES[S.mode].accent;
   for (let i = 0; i < n; i++) {
     const a = rand(-Math.PI * 0.95, -Math.PI * 0.05), v = rand(120, 520) * pow;
     fx.parts.push({

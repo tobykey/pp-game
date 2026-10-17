@@ -1,18 +1,20 @@
 // 시작점: 모듈을 연결하고 게임 루프를 돌린다
 import './style.css';
 import { initAudio } from './audio/engine';
-import { TEXT } from './data/chapter0';
+import { STEPS, STEP_NAMES, type StepId } from './data/chapter0';
 import { bindKeyboard } from './input/keyboard';
 import { bindPointer } from './input/pointer';
-import { toggleSticky } from './input/chord';
+import { resolveChord, toggleSticky } from './input/chord';
 import { cv, resize } from './render/canvas';
 import { draw } from './render/draw';
-import { restart } from './story/puzzle';
-import { banner, initHud, setMode, updateChips, updateHud } from './ui/hud';
+import { fastForward } from './story/chapter0';
+import { go, loadSaved } from './story/director';
+import { initHud, setMode, updateChips } from './ui/hud';
+import { nearestBeat, setTempo } from './world/rhythm';
 import { S } from './world/state';
 import { update } from './world/update';
 
-initHud({ onChip: toggleSticky, onMode: setMode, onReset: restart });
+initHud({ onChip: toggleSticky, onMode: setMode, onReset: () => { location.href = location.pathname; } });
 bindPointer(cv);
 bindKeyboard();
 
@@ -25,12 +27,29 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 addEventListener('resize', resize);
-resize(); updateChips(); updateHud(); requestAnimationFrame(frame);
+resize(); updateChips(); requestAnimationFrame(frame);
 document.fonts?.load(`30px "Nanum Brush Script"`).catch(() => {});
 
-document.querySelector('#go')!.addEventListener('click', () => {
+// 시작 화면: 처음부터 / 이어서 / 장면 바로 가기
+const jump = document.querySelector<HTMLSelectElement>('#jump')!;
+for (const s of STEPS.slice(1)) jump.insertAdjacentHTML('beforeend', `<option value="${s.id}">${STEP_NAMES[s.id]}</option>`);
+const urlStep = new URLSearchParams(location.search).get('step') as StepId | null;
+if (urlStep && STEPS.some(s => s.id === urlStep)) jump.value = urlStep;
+const saved = loadSaved();
+const cont = document.querySelector<HTMLButtonElement>('#cont')!;
+if (saved && saved !== 'wake') { cont.hidden = false; cont.textContent = `이어서 · ${STEP_NAMES[saved]}`; }
+
+function start(step: StepId) {
   try { initAudio(); } catch { /* 소리가 안 나도 화면은 계속 */ }
   S.started = true;
   document.querySelector<HTMLElement>('#start')!.hidden = true;
-  setTimeout(() => banner(TEXT.firstHint, 'soft', 2000), 300);
-});
+  setTempo(65, 'heart');
+  fastForward(step);
+  resolveChord();
+  go(step);
+}
+document.querySelector('#go')!.addEventListener('click', () => start((jump.value || 'wake') as StepId));
+cont.addEventListener('click', () => start(saved!));
+
+// 자동 테스트용 (개발 서버에서만)
+if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go } });

@@ -89,7 +89,7 @@ function makeMountains() {
     const r = seeded(31 + li * 11);
     const pts: [number, number][] = [];
     let h = r();
-    for (let x = -20; x <= W + 20; x += 18) {
+    for (let x = -20; x <= W * 1.7 + 20; x += 18) {
       h = clamp(h + (r() - 0.5) * 0.35, 0, 1);
       pts.push([x, hz() - H * base * h * amp * 1.6 - H * 0.004]);
     }
