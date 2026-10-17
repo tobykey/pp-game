@@ -4,7 +4,7 @@ import { updateChips } from '../ui/hud';
 import { S } from '../world/state';
 
 export function resolveChord() {
-  // 키가 모두 눌린 코드 중 키 개수가 가장 많은 것 (Cm7의 4키가 다른 3키 코드보다 우선)
+  // 키가 모두 눌린 코드 중 키 개수가 가장 많은 것 (Cm의 4키가 다른 3키 코드보다 우선)
   let best: ChordId | null = null, bs = 0;
   for (const [k, c] of Object.entries(CHORDS) as [ChordId, typeof CHORDS[ChordId]][]) {
     if (c.keys.length && c.keys.every(x => S.held.has(x)) && c.keys.length > bs) { best = k; bs = c.keys.length; }

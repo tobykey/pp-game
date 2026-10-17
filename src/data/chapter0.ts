@@ -2,10 +2,10 @@
 import type { ChordId } from './chords';
 
 /** 등불을 울려야 하는 순서 (후렴 2회차 진행) */
-export const SEQ: ChordId[] = ['Db', 'Eb', 'Cm7', 'F'];
+export const SEQ: ChordId[] = ['Db', 'Eb', 'Cm', 'F'];
 
 /** 각 등불이 뽑는 조표의 플랫(가시) 번호: B E A D 순서 중 */
-export const THORN_OF: Partial<Record<ChordId, number>> = { Db: 3, Eb: 1, Cm7: 0, F: 2 };
+export const THORN_OF: Partial<Record<ChordId, number>> = { Db: 3, Eb: 1, Cm: 0, F: 2 };
 
 /** 조표의 플랫 넷 = 심장의 가시 넷. p는 오선 위 높이 */
 export const THORNS = [
@@ -40,7 +40,7 @@ export const OBJECTS: ObjDef[] = [
   { id: 'isleR', kind: 'isle', rx: 0.85, ry: 0.18, s: 0.62, seed: 19 },
   { id: 'Db', kind: 'lamp', rx: 0.32, ry: 0.74, chord: 'Db' },
   { id: 'Eb', kind: 'lamp', rx: 0.66, ry: 0.3, chord: 'Eb' },
-  { id: 'Cm7', kind: 'lamp', rx: 0.17, ry: 0.7, chord: 'Cm7' },
+  { id: 'Cm', kind: 'lamp', rx: 0.17, ry: 0.7, chord: 'Cm' },
   { id: 'F', kind: 'lamp', rx: 0.85, ry: 0.7, chord: 'F', hint: '♮' },
   { id: 'refl', kind: 'refl' },
   { id: 'whisper', kind: 'whisper', rx: 0.5, ry: 0.86, pp: true },
