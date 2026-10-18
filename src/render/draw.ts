@@ -314,11 +314,14 @@ const mist = [...Array(8)].map((_, i) => ({ u: Math.random(), v: rand(0.05, 0.85
 function drawMist() {
   const { W, H } = view;
   for (const m of mist) {
-    m.u = (m.u + m.sp * 0.016 + 1.4) % 1.4 - 0.2;
-    const u = wrap(m.u - S.boat * 0.6, -0.2, 1.2);
+    // 안개는 천천히 흘러간다. 화면 밖으로 완전히 나간 뒤에야 반대편으로 돌아온다 (순간 이동이 보이지 않게)
+    // (이전 식은 매 프레임 화면 너비의 20%씩 건너뛰어 안개가 깜빡였다)
+    m.u += m.sp * 0.016;
+    const u = wrap(m.u - S.boat * 0.6, -0.7, 1.7);
     const x = u * W, y = hz() + (sb() - hz()) * m.v, r = m.r * Math.max(W, H);
     // 배 바로 위에 짙은 안개가 앉으면 주인공이 사라져 보여서, 배 근처 안개는 조금 옅게
-    const near = Math.hypot((x - boatX()) / W, (y - boatY()) / H) < 0.22 ? 0.5 : 1;
+    const dist = Math.hypot((x - boatX()) / W, (y - boatY()) / H);
+    const near = 0.5 + 0.5 * clamp((dist - 0.1) / 0.25, 0, 1);
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, `rgba(234,230,222,${0.62 * S.fog * near})`); g.addColorStop(1, 'rgba(234,230,222,0)');
     ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);

@@ -4,6 +4,7 @@ import { onPluck, onStroke } from '../story/director';
 import { pluck, dynFrom } from '../world/strum';
 import { S } from '../world/state';
 import { stringY, sx0, sx1 } from '../world/geometry';
+import { BRUSH_CURSOR, PICK_CURSOR } from '../render/pick';
 
 interface Ptr {
   x: number; y: number; t: number;
@@ -36,6 +37,8 @@ export function bindPointer(cv: HTMLCanvasElement) {
   cv.addEventListener('pointerdown', e => {
     if (!S.started || S.stringsVis < 0.3) return;
     cv.setPointerCapture(e.pointerId);
+    // 누르고 긁는 동안에만 피크를 쥔다
+    cv.style.cursor = PICK_CURSOR;
     ptr = { x: e.clientX, y: e.clientY, t: performance.now(), v: 0, last: {}, run: { dir: 0, n: 0, dyn: 0, sent: false } };
     // 줄 바로 위를 누르면 그 줄 하나를 튕긴다
     for (let i = 0; i < 6; i++) {
@@ -68,7 +71,7 @@ export function bindPointer(cv: HTMLCanvasElement) {
     ptr.x = x; ptr.y = y; ptr.t = now;
   });
 
-  const endPtr = () => { ptr = null; };
+  const endPtr = () => { ptr = null; if (S.started) cv.style.cursor = BRUSH_CURSOR; };
   cv.addEventListener('pointerup', endPtr);
   cv.addEventListener('pointercancel', endPtr);
 }

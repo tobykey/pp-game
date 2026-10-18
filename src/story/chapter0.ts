@@ -207,7 +207,7 @@ function endVision() {
   chorusEnded = true;
   S.forced = null; resolveChord();
   setBarChord(null);
-  S.flash = reduceMotion ? 0.3 : 0.9; S.flashCol = '#ffffff';
+  S.flash = reduceMotion ? 0.2 : 0.45; S.flashCol = '#ffffff';
   S.visionT = 0; S.sailT = 0; S.fogT = 1; S.cruise = 0;
   go('island');
 }

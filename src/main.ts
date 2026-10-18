@@ -7,7 +7,7 @@ import { bindPointer } from './input/pointer';
 import { resolveChord, toggleSticky } from './input/chord';
 import { cv, resize } from './render/canvas';
 import { draw } from './render/draw';
-import { PICK_CURSOR } from './render/pick';
+import { BRUSH_CURSOR } from './render/pick';
 import { fastForward } from './story/chapter0';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
@@ -53,7 +53,7 @@ if (saved && saved !== 'wake') { cont.hidden = false; cont.textContent = `이어
 function start(step: StepId) {
   try { initAudio(); } catch { /* 소리가 안 나도 화면은 계속 */ }
   S.started = true;
-  cv.style.cursor = PICK_CURSOR;
+  cv.style.cursor = BRUSH_CURSOR;
   document.querySelector<HTMLElement>('#start')!.hidden = true;
   setTempo(65, 'heart');
   fastForward(step);
