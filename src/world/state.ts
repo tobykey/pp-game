@@ -56,7 +56,9 @@ export const S = {
   lastOar: 0,
 
   // 연출
-  /** 장면이 먹으로 그려지는 정도 (0 빈 한지 ~ 1) */
+  /** 눈 감은 어둠 (1 완전히 검음 ~ 0) */
+  black: 0,
+  /** 장면이 떠오르는 정도 (0 하얀 빛 ~ 1) */
   reveal: 1,
   stringsVis: 1,
   /** 안개 짙기 */
@@ -73,8 +75,10 @@ export const S = {
   sash: 1, sashT: 1,
   /** 기타 침묵 (1절): 줄을 긁어도 소리 대신 먹먹한 틱만 */
   silence: false,
-  /** 화면에 보이는 침묵 정도 (줄이 흐려짐) */
+  /** 화면에 보이는 침묵 정도 (줄이 흐려지고 끊어짐, 색이 빠짐) */
   hush: 0,
+  /** 인물 줌인 (0 ~ 1) */
+  zoom: 0, zoomT: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }

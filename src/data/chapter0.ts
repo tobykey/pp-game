@@ -93,7 +93,7 @@ export const TEXT = {
   hintSoft: '더 여리게, 천천히',
   hintRow: '박동에 맞춰, 아래로 · 위로',
   hintRowMiss: '쿵, 하고 울릴 때 긁어 보세요',
-  hintSameOar: '아래로 한 번, 위로 한 번',
+  hintSameOar: '같은 쪽 노만 저으면 배가 돌아요 · 아래로 한 번, 위로 한 번',
   hintFind: '가는 줄로 비추면 글자가 보입니다',
   hintChord: '왼손으로 코드를 잡고 긁으세요',
   hintOnBeat: '박에 맞춰',

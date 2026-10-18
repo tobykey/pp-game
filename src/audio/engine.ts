@@ -10,6 +10,13 @@ let kitBus: GainNode;
 
 /** 소리가 준비됐으면 오디오 컨텍스트와 드럼 출력을 돌려준다 */
 export function audioOut() { return AC ? { ac: AC, out: kitBus } : null; }
+
+/** 6현(기타) 음량 0~1. 심장·드럼·베이스와 따로 조절한다 */
+let guitarVol = 0.45;
+export function setGuitarVolume(v: number) {
+  guitarVol = v;
+  if (AC && bus) bus.gain.setTargetAtTime(v, AC.currentTime, 0.03);
+}
 const chains = {} as Record<ModeId, GainNode>;
 const ksCache: Record<string, { buf: AudioBuffer; rate: number }[]> = {};
 
@@ -21,7 +28,7 @@ export function initAudio() {
   const master = ac.createGain(); master.gain.value = 0.85; comp.connect(master); master.connect(ac.destination);
   const rev = ac.createConvolver(); rev.buffer = impulse(ac, 3, 2.6);
   const rg = ac.createGain(); rg.gain.value = 0.3; rev.connect(rg); rg.connect(comp);
-  bus = ac.createGain(); bus.connect(comp); bus.connect(rev);
+  bus = ac.createGain(); bus.gain.value = guitarVol; bus.connect(comp); bus.connect(rev);
   kitBus = ac.createGain(); kitBus.gain.value = 0.9; kitBus.connect(comp);
   { const g = ac.createGain(); g.gain.value = 0.12; kitBus.connect(g); g.connect(rev); }
 

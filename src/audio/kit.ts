@@ -48,6 +48,12 @@ export function snare(t: number, v = 1) { hiss(t, 'bandpass', 1900, 0.18, 0.5 * 
 export function hat(t: number, v = 1, open = false) { hiss(t, 'highpass', 7500, open ? 0.22 : 0.035, 0.18 * v); }
 export function crash(t: number, v = 1) { hiss(t, 'highpass', 4500, 1.4, 0.22 * v, 0.5); }
 
+/** 줄이 끊어지는 소리: 높은 튕김이 꺾이며 사라진다 */
+export function snap(t: number) {
+  thump(t, 1500, 180, 0.22, 0.35);
+  hiss(t, 'highpass', 5000, 0.08, 0.35);
+}
+
 /** 베이스 한 음 (8분음표 길이) */
 export function bass(t: number, midi: number, dur: number, v = 1) {
   const o = audioOut(); if (!o) return;

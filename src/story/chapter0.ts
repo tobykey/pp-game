@@ -8,7 +8,9 @@ import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { banner, ink, setProgress, unlock } from '../ui/hud';
-import { pos, boatX, boatY } from '../world/geometry';
+import { pos, boatX, boatY, stringY } from '../world/geometry';
+import { audioOut } from '../audio/engine';
+import { snap } from '../audio/kit';
 import { grooveBeat, nearestBeat, setBarChord, setTempo, spb } from '../world/rhythm';
 import { row } from '../world/rowing';
 import { OBJ, S, cloth, fx, obj, view } from '../world/state';
@@ -29,20 +31,18 @@ const lamps = () => OBJ.filter(o => o.kind === 'lamp');
 
 // ---------- 장면들 ----------
 
+/** 눈뜸 연출 시간 (초): 어둠 속 심장 소리 → 흰 빛으로 → 장면이 떠오름 */
+const DARK = 3.6, TO_WHITE = 2.4, TO_SCENE = 3;
 const wake: StepHandler = {
-  enter() { S.reveal = 0; S.stringsVis = 0; },
-  beat() {
-    // 심장이 한 번 뛸 때마다 먹이 한 방울 번지며 세상이 그려진다
-    if (S.reveal < 1) {
-      S.reveal = Math.min(1, S.reveal + 0.13);
-      splash(boatX() + rand(-view.W * 0.3, view.W * 0.3), boatY() + rand(-40, 30), 6, 0.3);
-    }
-  },
+  enter() { S.black = 1; S.reveal = 0; S.stringsVis = 0; },
   update(dt, el) {
-    if (S.reveal > 0.55) S.stringsVis = Math.min(1, S.stringsVis + dt * 0.6);
+    S.black = el < DARK ? 1 : Math.max(0, 1 - (el - DARK) / TO_WHITE);
+    const t2 = el - DARK - TO_WHITE;
+    S.reveal = t2 <= 0 ? 0 : Math.min(1, t2 / TO_SCENE);
+    if (S.reveal > 0.6) S.stringsVis = Math.min(1, S.stringsVis + dt * 0.6);
     once('hint', S.stringsVis >= 1 && el > 1, () => ink(TEXT.hintStrum));
   },
-  pluck() { if (S.stringsVis > 0.5) { S.reveal = 1; S.stringsVis = 1; go('whisper'); } },
+  pluck() { if (S.stringsVis > 0.5) { S.black = 0; S.reveal = 1; S.stringsVis = 1; go('whisper'); } },
 };
 
 const whisper: StepHandler = {
@@ -62,7 +62,8 @@ const rowStep: StepHandler = {
     const r = row(s.dir);
     if (r === 'miss') { missRow++; if (missRow >= 3) ink(TEXT.hintRowMiss); return; }
     missRow = 0;
-    if (r === 'sameOar') { if (++sameRow >= 2) ink(TEXT.hintSameOar); } else sameRow = 0;
+    if (r === 'sameOar') { sameRow++; ink(TEXT.hintSameOar); }
+    else if (sameRow > 0) { sameRow = 0; ink(null); }
     if (r !== 'sameOar' && ++goodRows === 4) ink(null);
   },
   update() {
@@ -114,7 +115,7 @@ const hook: StepHandler = {
       lamp.lit++; hp++;
       const p = pos(lamp);
       splash(p.x, p.y - 20, 16, 0.6);
-      S.flash = Math.max(S.flash, reduceMotion ? 0.06 : 0.16); S.flashCol = MODES[S.mode].accent;
+      S.flash = Math.max(S.flash, reduceMotion ? 0.05 : 0.1); S.flashCol = MODES[S.mode].accent;
       setProgress(TEXT.progressHook(hp));
       if (hp === 4) { ink(null); banner(TEXT.roadOpen, 'soft', 1800); }
       else banner(TEXT.hookLit(CHORDS[expected].label, hp), 'soft', 1100);
@@ -184,9 +185,9 @@ const chorus: StepHandler = {
       setProgress(`${CHORDS[c].label} · ${bar + 1} / ${CHORUS_BARS.length}`);
       // 마디가 바뀔 때 형광. 조성 밖의 F(= 그 사람)에서 가장 크게
       const big = c === 'F';
-      S.flash = Math.max(S.flash, reduceMotion ? 0.08 : big ? 0.5 : 0.22);
+      S.flash = Math.max(S.flash, reduceMotion ? 0.06 : big ? 0.3 : 0.1);
       S.flashCol = big ? PINK : bar % 2 ? VOLT : PINK;
-      if (big && !reduceMotion) S.shake = Math.max(S.shake, 9);
+      if (big && !reduceMotion) S.shake = Math.max(S.shake, 6);
       const n2 = big ? 22 : 8;
       for (let j = 0; j < n2; j++) fx.lines.push({ x: boatX(), y: boatY() - 30, a: rand(-Math.PI, 0), l: rand(80, view.W * 0.4), life: 1, c: j % 3 ? VOLT : INK });
     } else endVision();
@@ -266,22 +267,30 @@ function barSection(bars: ChordId[], groove: 'chorus' | 'verse', next: StepId, o
 }
 
 const c1interlude = barSection(INTERLUDE_BARS, 'chorus', 'c1verse', (_bar, c) => {
-  if (c === 'F') { S.flash = Math.max(S.flash, reduceMotion ? 0.06 : 0.3); S.flashCol = PINK; }
+  if (c === 'F') { S.flash = Math.max(S.flash, reduceMotion ? 0.05 : 0.2); S.flashCol = PINK; }
 });
 const c1interEnter = c1interlude.enter!;
 c1interlude.enter = () => { c1interEnter(); unlock(['Fsus4']); ink(null); };
 
 const c1verse = barSection(VERSE_BARS, 'verse', 'c1end', bar => {
-  if (bar === 2) ink(TEXT.verseSilence);
+  if (bar === 1) ink(TEXT.verseSilence);
+  if (bar === 2) S.zoomT = 0;
   if (bar === 6) ink(null);
 });
 const c1verseEnter = c1verse.enter!;
-c1verse.enter = () => { c1verseEnter(); S.silence = true; unlock(['Fm', 'C']); };
+c1verse.enter = () => {
+  c1verseEnter(); S.silence = true; unlock(['Fm', 'C']);
+  // 줄이 끊어지는 순간: 소리, 튀는 줄 조각, 작은 흔들림. 그리고 기타를 안은 '나'에게 다가간다
+  const o = audioOut(); if (o) snap(o.ac.currentTime + 0.02);
+  for (let i = 0; i < 6; i++) splash(view.W * rand(0.3, 0.7), stringY(i), 3, 0.35, INK);
+  if (!reduceMotion) S.shake = Math.max(S.shake, 5);
+  S.zoomT = 1;
+};
 
 const c1end: StepHandler = {
   enter() {
     setTempo(65, 'heart');
-    S.silence = false; S.forced = null; resolveChord(); setBarChord(null);
+    S.silence = false; S.zoomT = 0; S.forced = null; resolveChord(); setBarChord(null);
     S.cruise = 0;
     ink(TEXT.demoEnd);
   },
@@ -310,7 +319,7 @@ registerSteps(all);
 export function fastForward(target: StepId) {
   const order = STEPS.map(s => s.id);
   const passed = (id: StepId) => order.indexOf(id) < order.indexOf(target);
-  if (passed('wake')) { S.reveal = 1; S.stringsVis = 1; }
+  if (passed('wake')) { S.black = 0; S.reveal = 1; S.stringsVis = 1; }
   if (passed('row')) { S.boat = ROW_DIST; S.vel = 0; }
   if (passed('lamps')) {
     lamps().forEach(o => { o.hidden = false; o.found = true; });

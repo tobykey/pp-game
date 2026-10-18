@@ -68,4 +68,5 @@ export function update(dt: number) {
   S.fog = ease(S.fog, S.fogT, 1.2, dt);
   S.vision = ease(S.vision, S.visionT, 2, dt);
   S.hush = ease(S.hush, S.silence ? 1 : 0, 2.5, dt);
+  S.zoom = ease(S.zoom, S.zoomT, 1.6, dt);
 }

@@ -17,13 +17,19 @@ export function spawnRipple(i: number, dyn: number, dir: number, x: number, dead
   if (fx.rip.length > 90) fx.rip.shift();
 }
 
+/** ff 연출이 마지막으로 터진 시각. 줄 6개를 한 번에 긁어도 연출은 한 번만 */
+let lastRock = -1;
+
 /** ff로 세게 쳤을 때: 섬광 + 흔들림 + 먹 스플래시 + 집중선 */
 export function rockHit(x: number, dyn: number) {
+  if (S.t - lastRock < 0.35) return;
+  lastRock = S.t;
   const { W } = view;
   const k = (dyn - 0.84) / 0.16;
-  S.flash = Math.max(S.flash, (0.22 + 0.3 * k) * (reduceMotion ? 0.4 : 1));
+  // 화면 전체 섬광은 은은하게 (자주 반짝이면 눈이 피로하다)
+  S.flash = Math.max(S.flash, (0.08 + 0.1 * k) * (reduceMotion ? 0.4 : 1));
   S.flashCol = MODES[S.mode].accent;
-  S.shake = Math.max(S.shake, reduceMotion ? 0 : 7 + 8 * k);
+  S.shake = Math.max(S.shake, reduceMotion ? 0 : 4 + 5 * k);
   splash(clamp(x, W * 0.05, W * 0.95), boatY() + 10, 14 + k * 16, 0.7 + k * 0.4);
   for (let j = 0; j < 10; j++) {
     fx.lines.push({ x: clamp(x, W * 0.05, W * 0.95), y: boatY(), a: rand(-Math.PI, 0), l: rand(60, 200), life: 1, c: j % 3 ? VOLT : INK });

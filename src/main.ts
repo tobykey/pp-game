@@ -1,12 +1,13 @@
 // 시작점: 모듈을 연결하고 게임 루프를 돌린다
 import './style.css';
-import { initAudio } from './audio/engine';
+import { initAudio, setGuitarVolume } from './audio/engine';
 import { STEPS, STEP_NAMES, type StepId } from './data/chapter0';
 import { bindKeyboard } from './input/keyboard';
 import { bindPointer } from './input/pointer';
 import { resolveChord, toggleSticky } from './input/chord';
 import { cv, resize } from './render/canvas';
 import { draw } from './render/draw';
+import { PICK_CURSOR } from './render/pick';
 import { fastForward } from './story/chapter0';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
@@ -30,6 +31,16 @@ addEventListener('resize', resize);
 resize(); updateChips(); requestAnimationFrame(frame);
 document.fonts?.load(`30px "Nanum Brush Script"`).catch(() => {});
 
+// 6현 음량 게이지 (브라우저에 기억)
+const vol = document.querySelector<HTMLInputElement>('#vol')!;
+try { const v = localStorage.getItem('pp.guitarVol'); if (v != null) vol.value = v; } catch { /* 무시 */ }
+const applyVol = () => {
+  setGuitarVolume(+vol.value / 100);
+  try { localStorage.setItem('pp.guitarVol', vol.value); } catch { /* 무시 */ }
+};
+vol.addEventListener('input', applyVol);
+applyVol();
+
 // 시작 화면: 처음부터 / 이어서 / 장면 바로 가기
 const jump = document.querySelector<HTMLSelectElement>('#jump')!;
 for (const s of STEPS.slice(1)) jump.insertAdjacentHTML('beforeend', `<option value="${s.id}">${STEP_NAMES[s.id]}</option>`);
@@ -42,6 +53,7 @@ if (saved && saved !== 'wake') { cont.hidden = false; cont.textContent = `이어
 function start(step: StepId) {
   try { initAudio(); } catch { /* 소리가 안 나도 화면은 계속 */ }
   S.started = true;
+  cv.style.cursor = PICK_CURSOR;
   document.querySelector<HTMLElement>('#start')!.hidden = true;
   setTempo(65, 'heart');
   fastForward(step);

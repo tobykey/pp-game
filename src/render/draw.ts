@@ -19,6 +19,12 @@ export function draw() {
   if (S.shake > 0.3) ctx.translate(rand(-S.shake, S.shake), rand(-S.shake, S.shake));
   const acc = MODES[S.mode].accent;
   const camPx = S.boat * W;
+  // 인물 줌인 (1절의 기타 침묵): 기타를 안은 '나'에게 다가간다
+  ctx.save();
+  if (S.zoom > 0.001) {
+    const fx0 = playerX(), fy0 = boatY() - 20, z = 1 + 0.9 * S.zoom;
+    ctx.translate(fx0, fy0); ctx.scale(z, z); ctx.translate(-fx0, -fy0);
+  }
   // far mountains (always visible, faint) — 아주 느리게 흘러간다
   ctx.save(); ctx.translate(-camPx * 0.05, 0);
   for (const m of backdrop.mountains) {
@@ -68,6 +74,15 @@ export function draw() {
     ctx.beginPath(); ctx.ellipse(0, 0, p.r * (1 + sp), p.r, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
   ctx.globalAlpha = 1;
+  ctx.restore();
+  // 기타 침묵: 세상의 색이 빠지고 조금 어두워진다 (그 사람의 핑크도 사라진다)
+  if (S.hush > 0.01) {
+    ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = S.hush; ctx.fillStyle = '#808080';
+    ctx.fillRect(-40, -40, W + 80, H + 80);
+    ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.22 * S.hush; ctx.fillStyle = '#78736b';
+    ctx.fillRect(-40, -40, W + 80, H + 80);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
   // 후렴 예고: 화면 전체에 형광이 번진다
   if (S.vision > 0.01) {
     ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = S.vision * 0.13; ctx.fillStyle = PINK;
@@ -82,10 +97,12 @@ export function draw() {
   }
   drawScore(acc);
   drawDyn(acc);
-  // 눈뜸: 빈 한지에서 먹이 번지며 세상이 그려진다
+  // 눈뜸: 하얀 빛 속에서 세상이 떠오른다
   if (S.reveal < 1) { ctx.globalAlpha = 1 - S.reveal; ctx.drawImage(backdrop.paper!, -40, -40, W + 80, H + 80); ctx.globalAlpha = 1; }
   drawStrings(acc);
   ctx.restore();
+  // 눈뜸: 눈을 감은 어둠
+  if (S.black > 0.001) { ctx.globalAlpha = S.black; ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
 }
 
 function drawIsle(o: WorldObj) {
@@ -333,6 +350,16 @@ function drawStrings(acc: string) {
         k ? ctx.lineTo(lerp(x0, x1, u), y + d) : ctx.moveTo(x0, y);
       }
     };
+    if (S.hush > 0.3) {
+      // 끊어진 줄: 가운데가 끊겨 양쪽 끝이 늘어진다
+      const gx = lerp(x0, x1, 0.36 + 0.055 * i + 0.03 * Math.sin(i * 2.3)), droop = (15 + i * 3) * S.hush;
+      ctx.strokeStyle = INK; ctx.globalAlpha = 0.85 * base; ctx.lineWidth = th;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(gx - 30, y + s.amp * 0.3); ctx.bezierCurveTo(gx - 16, y, gx - 12, y + droop * 0.6, gx - 16, y + droop); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(gx + 30, y - s.amp * 0.3); ctx.bezierCurveTo(gx + 16, y, gx + 12, y + droop * 0.7, gx + 18, y + droop * 1.15); ctx.stroke();
+      ctx.globalAlpha = 0.5 * base; ctx.fillStyle = INK; ctx.font = `10px ${MONO}`; ctx.textAlign = 'left';
+      ctx.fillText(String(6 - i), x0 + 6, y - 5);
+      continue;
+    }
     ctx.strokeStyle = INK; ctx.globalAlpha = 0.92 * base; ctx.lineWidth = th; path(); ctx.stroke();
     ctx.globalAlpha = 0.25 * base; ctx.lineWidth = th * 0.5; ctx.setLineDash([26, 7, 10, 5]); ctx.lineDashOffset = i * 13;
     ctx.save(); ctx.translate(0, th * 0.45); path(); ctx.stroke(); ctx.restore(); ctx.setLineDash([]);
