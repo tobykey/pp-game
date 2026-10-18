@@ -23,5 +23,5 @@ npm run dev
 | `src/render/` | 캔버스 그리기, 수묵·이펙트 |
 | `src/ui/` | HTML 화면 요소(목표 문구, 운지표, 배너, 붓글씨 안내) |
 | `prototype/` | 원본 단일 HTML 프로토타입 (손맛 기준, 수정하지 않음) |
-| `docs/` | 기획(`design.md`), 곡 구성표(`song-map.md`), 시나리오(`scenario-ch0-1.md`), 아이디어, 진행 보고서 |
+| `docs/` | 한눈에 보기(`overview.md`), 기획(`design.md`), 곡 구성표(`song-map.md`), 시나리오(`scenario-ch0-1.md`), 아이디어, 진행 보고서 |
 | `assets/` | 원곡 MR·악보 (로컬 전용, 저장소에 올리지 않음) |
