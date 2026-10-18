@@ -33,10 +33,30 @@ export function unlock(chords: ChordId[]) {
   updateChips();
 }
 
+/** 운지표에서 지금 쳐야 할 코드 칩을 깜빡이게 한다 */
+let cueChord: ChordId | null = null;
+
+/**
+ * 꼭 해야 할 것을 화면에 크게 띄운다. kind 'rock'은 클라이맥스(형광), 'soft'는 차분한 안내.
+ * chord를 주면 그 코드의 키를 함께 보여 주고 운지표의 칩도 깜빡인다
+ */
+export function cue(txt: string | null, kind: 'soft' | 'rock' = 'soft', chord: ChordId | null = null) {
+  const el = $('#cue');
+  cueChord = txt ? chord : null;
+  if (!txt) { el.classList.remove('show'); updateChips(); return; }
+  const keys = chord ? CHORDS[chord].keys.join(' · ') : '';
+  el.innerHTML = `<b>${txt}</b>${keys ? `<small>${keys}</small>` : ''}`;
+  el.className = 'cue ' + kind;
+  void el.offsetWidth;
+  el.classList.add('show');
+  updateChips();
+}
+
 export function updateChips() {
   chipsEl.querySelectorAll<HTMLElement>('.chip').forEach(b => {
     const ch = b.dataset.ch as ChordId;
     b.hidden = !S.unlocked.has(ch) && S.forced !== ch;
+    b.classList.toggle('cued', ch === cueChord);
     b.classList.toggle('active', ch === S.chord);
     b.classList.toggle('sticky', ch === S.sticky);
   });

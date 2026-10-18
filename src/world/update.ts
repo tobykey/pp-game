@@ -20,8 +20,10 @@ export function update(dt: number) {
 
   if (S.started) updateStory(dt);
 
-  // 둘러보기: 손을 떼면 천천히 배 쪽으로 돌아온다
-  if (!S.dragLook) S.look = ease(S.look, 0, 1.6, dt);
+  // 둘러보기: ← → 키를 누르는 동안 옆을 보고, 떼면 천천히 배 쪽으로 돌아온다
+  S.dragLook = S.lookable && S.lookDir !== 0;
+  if (S.dragLook) S.look = Math.max(-0.65, Math.min(0.65, S.look + S.lookDir * dt * 1.1));
+  else S.look = ease(S.look, 0, 1.6, dt);
   // 그 사람의 자세는 내가 보지 않을 때(배가 화면 밖으로 비켜났을 때) 바뀐다 (복선: 잠든 게 아니었다)
   if (S.lookable && Math.abs(S.look) > 0.55 && S.pose === 0) S.pose = 1;
 
@@ -88,4 +90,5 @@ export function update(dt: number) {
   S.hush = ease(S.hush, S.silence ? 1 : 0, 2.5, dt);
   S.zoom = ease(S.zoom, S.zoomT, 1.6, dt);
   S.vortex = ease(S.vortex, S.vortexT, 1.5, dt);
+  S.dim = ease(S.dim, S.dimT, 2.5, dt);
 }

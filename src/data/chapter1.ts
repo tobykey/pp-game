@@ -60,8 +60,10 @@ export const OBJECTS1: ObjDef[] = [
 ];
 
 export const TEXT1 = {
-  lookHint: '바다 위를 끌면 둘러볼 수 있어요',
-  rockHint: '바위가 길을 막았다 · 아주 빠르게 긁어 부수세요',
+  lookHint: '← → 키를 누르고 있으면 둘러볼 수 있어요',
+  rockHint: '바위가 길을 막았다 · 바위가 있는 자리에서 아주 빠르게 긁으세요',
+  rockWhere: '긁는 자리에서 파동이 퍼진다 · 점선을 따라 바위 아래를 긁으세요',
+  rockHarder: '더 빠르게! 아주 세게(ff) 긁어야 부서진다',
   rockBroken: '부서졌다',
   snapLine: '줄이… 끊어졌다',
   bassHint: '왼손으로 코드를 잡고 긁으면, 낮은 소리가 바다를 울린다',
@@ -69,9 +71,11 @@ export const TEXT1 = {
   orderBroken: '순서가 흐트러졌다',
   stagePuzzle: '부표를 1절 순서대로 · D♭ → E♭',
   hold: '박에 맞춰 버티세요',
-  pull: 'C로 가시를 뽑으세요 · Q S C',
+  pull: '지금! C로 가시를 뽑으세요',
+  pullCue: 'C!',
   pullHint: '조성 밖의 C · 그 안의 E♮가 E♭을 되돌린다',
-  rainStall: (label: string) => `해류가 되돌아간다 · 지금은 ${label}`,
+  pulled: '가시가 빠졌다',
+  rainStall: (label: string) => `마디 안에 ${label}를 한 번 울리면 해류가 흐른다`,
   afterLine: '가시 하나가 빠졌다. 숨이 조금 가볍다',
   chapterEnd: '챕터 1 · 고집의 섬',
   nextChapter: '챕터 2 · 멈춘 시간 — 준비 중',

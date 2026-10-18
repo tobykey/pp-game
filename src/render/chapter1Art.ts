@@ -2,6 +2,7 @@
 import { OBJ, S, view, type WorldObj } from '../world/state';
 import { pos, toScreenX } from '../world/geometry';
 import { ctx } from './canvas';
+import { BRUSH } from './palette';
 import { figure } from './figure';
 import { INK, INK_SOFT, PAPER } from './palette';
 
@@ -164,6 +165,16 @@ export function drawRock(o: WorldObj) {
   ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-4, -10); ctx.moveTo(12, -30); ctx.lineTo(22, -8); ctx.stroke();
   ctx.globalAlpha = 0.2; ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(0, 10, 50, 6, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore(); ctx.globalAlpha = 1;
+  // 길을 막은 바위: 바위에서 줄까지 점선. 이 자리에서 긁어야 파동이 바위에 닿는다
+  if (S.rockGuide === o.id) {
+    const pulse = 0.55 + 0.45 * Math.sin(S.t * 5), yEnd = view.H * 0.69;
+    ctx.save(); ctx.strokeStyle = INK; ctx.globalAlpha = 0.5 + 0.3 * pulse; ctx.lineWidth = 2.5;
+    ctx.setLineDash([10, 8]); ctx.lineDashOffset = -S.t * 40;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y + 16); ctx.lineTo(p.x, yEnd); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(p.x - 10, yEnd - 12); ctx.lineTo(p.x, yEnd); ctx.lineTo(p.x + 10, yEnd - 12); ctx.stroke();
+    ctx.fillStyle = INK; ctx.font = `26px ${BRUSH}`; ctx.textAlign = 'center'; ctx.fillText('여기서 세게', p.x, yEnd - 22);
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
 }
 
 /** 공명 부표: 자기 음(근음)이 울리면 떨고, 순서가 맞으면 불이 켜진다 */
@@ -198,10 +209,34 @@ export function drawThorn(o: WorldObj) {
     }
     ctx.restore();
   }
+  // 버티기 게이지: 가시 밑동을 감싸는 고리가 차오른다
+  if (S.meter > 0.01 && S.dim < 0.05) {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.lineCap = 'round';
+    ctx.strokeStyle = INK; ctx.globalAlpha = 0.18; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.ellipse(0, 0, 62, 24, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 0.85; ctx.strokeStyle = INK;
+    ctx.beginPath(); ctx.ellipse(0, 0, 62, 24, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * S.meter); ctx.stroke();
+    ctx.restore();
+  }
   ctx.save(); ctx.translate(p.x, p.y);
   ctx.globalAlpha = Math.max(0.75, o.vis); ctx.fillStyle = INK;
   ctx.beginPath(); ctx.moveTo(-16, 6); ctx.quadraticCurveTo(-8, -50, 2, -118); ctx.quadraticCurveTo(6, -50, 16, 6); ctx.closePath(); ctx.fill();
   ctx.fillStyle = PAPER; ctx.globalAlpha = 0.85; ctx.font = '28px "Gowun Batang",serif'; ctx.textAlign = 'center';
   ctx.fillText('♭', 1, -18);
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+
+/** 다 버틴 순간: 어두워진 세상 위로 가시만 핑크로 빛난다 (C로 뽑으라는 신호) */
+export function drawThornGlow() {
+  const o = OBJ.find(x => x.kind === 'thorn');
+  if (!o || o.hidden || o.gone || S.dim < 0.02) return;
+  const p = pos(o), pulse = 0.7 + 0.3 * Math.sin(S.t * 6);
+  ctx.save(); ctx.translate(p.x, p.y);
+  const g = ctx.createRadialGradient(0, -50, 4, 0, -50, 150);
+  g.addColorStop(0, 'rgba(255,42,127,.55)'); g.addColorStop(1, 'rgba(255,42,127,0)');
+  ctx.globalAlpha = S.dim * pulse * 1.6; ctx.fillStyle = g; ctx.fillRect(-150, -200, 300, 300);
+  ctx.globalAlpha = Math.min(1, S.dim * 2); ctx.fillStyle = INK; ctx.strokeStyle = PINK; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-16, 6); ctx.quadraticCurveTo(-8, -50, 2, -118); ctx.quadraticCurveTo(6, -50, 16, 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = PAPER; ctx.font = '28px "Gowun Batang",serif'; ctx.textAlign = 'center'; ctx.fillText('♭', 1, -18);
   ctx.restore(); ctx.globalAlpha = 1;
 }

@@ -4,7 +4,7 @@ import { MODES } from '../data/modes';
 import { TEXT } from '../data/chapter0';
 import { OBJ, S, cloth, fx, obj, str, thorns, view, type WorldObj } from '../world/state';
 import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0, sx1, toScreenX } from '../world/geometry';
-import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn } from './chapter1Art';
+import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn, drawThornGlow } from './chapter1Art';
 import { figure } from './figure';
 import { clamp, lerp, rand } from '../util/math';
 import { backdrop, ctx } from './canvas';
@@ -90,6 +90,11 @@ export function draw() {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
   drawPaintingEdges();
+  // 가시를 뽑을 순간: 세상이 어두워지고 가시만 빛난다
+  if (S.dim > 0.01) {
+    ctx.globalAlpha = S.dim * 0.75; ctx.fillStyle = '#14120f'; ctx.fillRect(-40, -40, W + 80, H + 80); ctx.globalAlpha = 1;
+    drawThornGlow();
+  }
   // 후렴 예고: 화면 전체에 형광이 번진다
   if (S.vision > 0.01) {
     ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = S.vision * 0.13; ctx.fillStyle = PINK;

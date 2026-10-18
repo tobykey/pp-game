@@ -11,7 +11,7 @@ import { snap } from '../audio/kit';
 import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
-import { banner, ink, setObjective, setProgress, unlock } from '../ui/hud';
+import { banner, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
 import { pos, stringY, toScreenX } from '../world/geometry';
 import { grooveBeat, nearestBeat, setBarChord, setTempo, spb } from '../world/rhythm';
 import { row } from '../world/rowing';
@@ -95,24 +95,30 @@ const sail: StepHandler = {
     once('look', el > 3, () => ink(TEXT1.lookHint));
     once('lookOff', el > 9, () => ink(null));
     // 먹 바위가 길을 막는다
+    S.rockGuide = null;
     for (const r of OBJ.filter(o => o.kind === 'rock' && !o.gone)) {
       const stop = (r.wx ?? 0) - 0.2;
-      if (S.boat > stop) { S.boat = stop; S.vel = Math.min(S.vel, 0); once('rock' + r.id, true, () => ink(TEXT1.rockHint)); }
+      if (S.boat >= stop - 0.002) { S.rockGuide = r.id; once('rock' + r.id, true, () => ink(TEXT1.rockHint)); }
+      if (S.boat > stop) { S.boat = stop; S.vel = Math.min(S.vel, 0); }
     }
     if (S.boat >= SNAP_AT) arrived = true;
   },
   stroke(s) {
     row(s.dir, 0.6);
-    // 아주 세게(ff) 긁으면 가까운 바위가 부서진다
-    if (s.dyn >= 0.84) {
-      const r = OBJ.find(o => o.kind === 'rock' && !o.gone && (o.wx ?? 0) - S.boat < 0.45 && (o.wx ?? 0) > S.boat);
-      if (r) {
+    // 막힌 바위는 '바위가 있는 자리'에서 아주 세게(ff) 긁어야 부서진다 (긁는 자리에서 파동이 퍼지므로)
+    const r = S.rockGuide ? obj(S.rockGuide) : null;
+    if (r && !r.gone) {
+      const atRock = Math.abs(s.x - pos(r).x) < view.W * 0.09;
+      if (!atRock) { ink(TEXT1.rockWhere); return; }
+      if (s.dyn < 0.84) { ink(TEXT1.rockHarder); return; }
+      {
         r.gone = true;
         const p = pos(r);
         splash(p.x, p.y, 34, 1, INK);
         for (let j = 0; j < 12; j++) fx.lines.push({ x: p.x, y: p.y, a: rand(-Math.PI, 0), l: rand(60, 180), life: 1, c: j % 3 ? VOLT : INK });
         ink(null);
         banner(TEXT1.rockBroken, 'soft', 900);
+        S.rockGuide = null;
       }
     }
   },
@@ -202,25 +208,28 @@ const stage: StepHandler = {
 };
 
 // ---------- 1-3 첫 번째 가시 (C에서 130으로) ----------
-let meter = 0, thornPhase: 'hold' | 'pull' | 'done' = 'hold';
+let thornPhase: 'hold' | 'pull' | 'done' = 'hold';
 const thornStep: StepHandler = {
   enter() {
-    meter = 0; thornPhase = 'hold';
+    S.meter = 0; thornPhase = 'hold';
     setTempo(130, 'chorus');
     setBarChord(bar => STAGE_BARS[bar % 4]);
-    S.vortexT = 1;
+    S.vortexT = 0.5;
     obj('thorn').hidden = false;
     setProgress(TEXT1.progressHold(0));
+    ink(TEXT1.hold);
   },
   beat() {
-    // 소용돌이가 배를 흔든다
-    if (thornPhase !== 'done' && !reduceMotion) S.wobble += rand(-1, 1) * 0.025;
+    // 소용돌이가 배를 흔든다. 버틸수록 거세진다
+    if (thornPhase !== 'done' && !reduceMotion) S.wobble += rand(-1, 1) * (0.02 + 0.03 * S.meter);
   },
-  update(dt) {
+  update(dt, el) {
     S.vel = 0;
+    once('holdOff', el > 4, () => ink(null));
     if (thornPhase === 'hold') {
-      meter = Math.max(0, meter - dt * 0.03);
-      setProgress(TEXT1.progressHold(Math.round(meter * 6)));
+      S.meter = Math.max(0, S.meter - dt * 0.03);
+      S.vortexT = 0.5 + 0.5 * S.meter;
+      setProgress(TEXT1.progressHold(Math.round(S.meter * 6)));
     }
   },
   stroke(s) {
@@ -228,9 +237,17 @@ const thornStep: StepHandler = {
     if (thornPhase === 'hold') {
       const r = row(s.dir);
       S.vel = 0;
-      meter = Math.max(0, Math.min(1, meter + (r === 'miss' ? -0.08 : 1 / 6)));
-      setProgress(TEXT1.progressHold(Math.round(meter * 6)));
-      if (meter >= 1) { thornPhase = 'pull'; setObjective(TEXT1.pull); ink(TEXT1.pullHint); }
+      S.meter = Math.max(0, Math.min(1, S.meter + (r === 'miss' ? -0.08 : 1 / 6)));
+      setProgress(TEXT1.progressHold(Math.round(S.meter * 6)));
+      if (S.meter >= 1) {
+        // 다 버텼다: 세상이 어두워지고 가시만 빛난다. 화면 가득 'C!'
+        thornPhase = 'pull';
+        S.dimT = 0.55;
+        setObjective(TEXT1.pull); setProgress('');
+        cue(TEXT1.pullCue, 'rock', 'C');
+        ink(TEXT1.pullHint);
+        if (!reduceMotion) S.shake = Math.max(S.shake, 6);
+      }
     } else if (thornPhase === 'pull' && s.chord === 'C') {
       if (!onBeat()) { ink(TEXT1.onBeat); return; }
       pullThorn();
@@ -242,29 +259,34 @@ function pullThorn() {
   thornPhase = 'done';
   const t = obj('thorn'), tp = pos(t);
   t.gone = true;
-  ink(null); setProgress(''); setObjective('');
-  // 가시가 뽑히는 순간, 딱 한 번 기타가 C 화음으로 크게 울린다 (복선: 가시를 받아 삼킨 그 사람의 소리)
+  cue(null); ink(null); setProgress(''); setObjective('');
+  S.dimT = 0; S.vortexT = 0;
+  // 음악이 뚝 끊긴다 → 한 박 뒤, 딱 한 번 기타가 C 화음으로 터진다 (복선: 가시를 받아 삼킨 그 사람의 소리)
+  setTempo(65, 'none');
   const prevMode = S.mode;
-  S.mode = 'rock'; S.silence = false;
-  CHORDS.C.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 22));
-  setTimeout(() => { S.mode = prevMode; }, 200);
-  setTimeout(() => { S.silence = true; }, 900);
-  S.flash = Math.max(S.flash, reduceMotion ? 0.06 : 0.25); S.flashCol = PINK;
-  if (!reduceMotion) S.shake = Math.max(S.shake, 8);
-  splash(tp.x, tp.y - 20, 60, 1.2, PINK);
-  for (let j = 0; j < 22; j++) fx.lines.push({ x: tp.x, y: tp.y - 20, a: rand(-Math.PI, 0), l: rand(80, view.W * 0.35), life: 1.2, c: j % 3 ? VOLT : INK });
-  // 조표의 E♭이 빠져 뱃머리 쪽으로 떨어진다 (복선: 그 사람이 삼켰다)
-  const th = thorns[1];
-  th.gone = true; th.fly = { t: S.t, vx: 0, vy: 0, rot: 3, toBow: true };
-  // 이 폭발에 그림 속 '새 줄을 든 손'이 흩어진다 (복선: ff가 지운 것)
-  const p = obj('pStage');
-  if (!p.gone) {
-    const hx = toScreenX((p.wx ?? 0) - (p.w ?? 0.9) / 2 - 0.09);
-    splash(hx, view.H * 0.3, 16, 0.6, PINK);
-    p.gone = true;
-  }
-  S.crack = 1; S.pose = 2; S.vortexT = 0;
-  goLater('c1rain', currentEl, 3.2);
+  setTimeout(() => {
+    S.mode = 'rock'; S.silence = false;
+    CHORDS.C.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 22));
+    setTimeout(() => { S.mode = prevMode; }, 200);
+    setTimeout(() => { S.silence = true; }, 1300);
+    S.flash = Math.max(S.flash, reduceMotion ? 0.08 : 0.3); S.flashCol = PINK;
+    if (!reduceMotion) S.shake = Math.max(S.shake, 12);
+    splash(tp.x, tp.y - 20, 90, 1.4, PINK);
+    for (let j = 0; j < 30; j++) fx.lines.push({ x: tp.x, y: tp.y - 20, a: rand(-Math.PI, Math.PI), l: rand(100, view.W * 0.45), life: 1.4, c: j % 3 ? VOLT : INK });
+    banner(TEXT1.pulled, 'rock', 2600);
+    // 조표의 E♭이 빠져 뱃머리 쪽으로 떨어진다 (복선: 그 사람이 삼켰다)
+    const th = thorns[1];
+    th.gone = true; th.fly = { t: S.t, vx: 0, vy: 0, rot: 3, toBow: true };
+    // 이 폭발에 그림 속 '새 줄을 든 손'이 흩어진다 (복선: ff가 지운 것)
+    const p = obj('pStage');
+    if (!p.gone) {
+      const hx = toScreenX((p.wx ?? 0) - (p.w ?? 0.9) / 2 - 0.09);
+      splash(hx, view.H * 0.3, 16, 0.6, PINK);
+      p.gone = true;
+    }
+    S.crack = 1; S.pose = 2;
+  }, 450);
+  goLater('c1rain', currentEl, 4);
 }
 
 // ---------- 1-4 비 ----------
@@ -276,6 +298,7 @@ const rain: StepHandler = {
     setBarChord(() => RAIN_BARS[Math.min(rk, RAIN_BARS.length - 1)]);
     obj('pRain').hidden = false;
     setProgress(TEXT1.progressRain(CHORDS[RAIN_BARS[0]].label, 0));
+    cue(CHORDS[RAIN_BARS[0]].label, 'soft', RAIN_BARS[0]);
   },
   beat(n) {
     if (rainDone) return;
@@ -286,17 +309,17 @@ const rain: StepHandler = {
       rainTarget += (P_RAIN - P_STAGE) / RAIN_BARS.length;
       if (rk >= RAIN_BARS.length) {
         // 마지막 Fm Fm: 해결되지 않은 채 음악이 멈춘다
-        rainDone = true; setTempo(65, 'none'); setProgress('');
+        rainDone = true; setTempo(65, 'none'); setProgress(''); cue(null);
         goLater('c1after', currentEl, 1.5);
         return;
       }
       ink(null);
     } else {
       stalls++;
-      S.wobble -= 0.04;
       if (stalls >= 2) ink(TEXT1.rainStall(CHORDS[RAIN_BARS[rk]].label));
     }
     setProgress(TEXT1.progressRain(CHORDS[RAIN_BARS[rk]].label, rk));
+    cue(CHORDS[RAIN_BARS[rk]].label, 'soft', RAIN_BARS[rk]);
   },
   update() {
     S.cruise = 0;
@@ -304,7 +327,11 @@ const rain: StepHandler = {
   },
   stroke(s) {
     verseStroke(s);
-    if (!rainDone && s.chord === RAIN_BARS[rk] && onBeat()) hit = true;
+    // 박을 맞추지 않아도 된다: 마디 안에서 맞는 코드를 한 번 울리면 된다
+    if (!rainDone && s.chord === RAIN_BARS[rk] && !hit) {
+      hit = true;
+      cue(CHORDS[RAIN_BARS[rk]].label + ' ✓', 'soft', null);
+    }
   },
 };
 
