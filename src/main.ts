@@ -1,18 +1,19 @@
 // 시작점: 모듈을 연결하고 게임 루프를 돌린다
 import './style.css';
 import { initAudio, setGuitarVolume } from './audio/engine';
-import { STEPS, STEP_NAMES, type StepId } from './data/chapter0';
+import { STEPS, STEP_NAMES, type StepId } from './data/steps';
 import { bindKeyboard } from './input/keyboard';
 import { bindPointer } from './input/pointer';
 import { resolveChord, toggleSticky } from './input/chord';
 import { cv, resize } from './render/canvas';
 import { draw } from './render/draw';
 import { BRUSH_CURSOR } from './render/pick';
-import { fastForward } from './story/chapter0';
+import { fastForward0 } from './story/chapter0';
+import { fastForward1 } from './story/chapter1';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
 import { nearestBeat, setTempo } from './world/rhythm';
-import { S } from './world/state';
+import { OBJ, S, thorns } from './world/state';
 import { update } from './world/update';
 
 initHud({ onChip: toggleSticky, onMode: setMode, onReset: () => { location.href = location.pathname; } });
@@ -56,7 +57,8 @@ function start(step: StepId) {
   cv.style.cursor = BRUSH_CURSOR;
   document.querySelector<HTMLElement>('#start')!.hidden = true;
   setTempo(65, 'heart');
-  fastForward(step);
+  fastForward0(step);
+  fastForward1(step);
   resolveChord();
   go(step);
 }
@@ -64,4 +66,4 @@ document.querySelector('#go')!.addEventListener('click', () => start((jump.value
 cont.addEventListener('click', () => start(saved!));
 
 // 자동 테스트용 (개발 서버에서만)
-if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go } });
+if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns } });

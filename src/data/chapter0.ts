@@ -1,21 +1,11 @@
 // 챕터 0 '안개' — 장면 순서, 오브젝트 배치, 화면 문구 (시나리오: docs/scenario-ch0-1.md)
 import type { ChordId } from './chords';
-import type { ModeId } from './modes';
+import type { ObjDef, StepDef } from './defs';
 import { HALF_BPM, SONG_BPM, section } from './song';
 
-export type StepId = 'wake' | 'whisper' | 'row' | 'lamps' | 'hook' | 'reflect' | 'cloth' | 'chorus' | 'island' | 'end'
-  // 챕터 1 맛보기 (결정 확인용): 간주 → 1절의 기타 침묵
-  | 'c1interlude' | 'c1verse' | 'c1end';
+export type Step0Id = 'wake' | 'whisper' | 'row' | 'lamps' | 'hook' | 'reflect' | 'cloth' | 'chorus' | 'island' | 'end';
 
-export interface StepDef {
-  id: StepId;
-  /** 화면 위쪽 목표 문구 (빈 문자열이면 숨김) */
-  objective: string;
-  bpm: number;
-  mode: ModeId;
-}
-
-export const STEPS: StepDef[] = [
+export const STEPS0: StepDef<Step0Id>[] = [
   { id: 'wake', objective: '', bpm: HALF_BPM, mode: 'korean' },
   { id: 'whisper', objective: '', bpm: HALF_BPM, mode: 'korean' },
   { id: 'row', objective: '박동에 맞춰 노를 저어 안개 속으로', bpm: HALF_BPM, mode: 'korean' },
@@ -25,17 +15,13 @@ export const STEPS: StepDef[] = [
   { id: 'cloth', objective: '', bpm: HALF_BPM, mode: 'korean' },
   { id: 'chorus', objective: '박에 맞춰 노를 저으세요', bpm: SONG_BPM, mode: 'rock' },
   { id: 'island', objective: '', bpm: HALF_BPM, mode: 'korean' },
-  { id: 'end', objective: '챕터 0 끝 · 줄을 긁으면 챕터 1 맛보기', bpm: HALF_BPM, mode: 'korean' },
-  { id: 'c1interlude', objective: '챕터 1 맛보기 · 간주 — 박에 맞춰 노를 저으세요', bpm: SONG_BPM, mode: 'rock' },
-  { id: 'c1verse', objective: '챕터 1 맛보기 · 1절 — 박에 맞춰 노를 저으세요', bpm: SONG_BPM, mode: 'acoustic' },
-  { id: 'c1end', objective: '맛보기 끝 · 1절에서 기타가 쉬는 연출, 어떠셨나요?', bpm: HALF_BPM, mode: 'acoustic' },
+  { id: 'end', objective: '', bpm: HALF_BPM, mode: 'korean' },
 ];
 
 /** 장면 이름 (이어하기·건너뛰기 표시용) */
-export const STEP_NAMES: Record<StepId, string> = {
+export const STEP0_NAMES: Record<Step0Id, string> = {
   wake: '눈뜸', whisper: '속삭임', row: '노 젓기', lamps: '등불 찾기', hook: '훅',
-  reflect: '물그림자', cloth: '천 조각', chorus: '후렴 1, 예고', island: '섬', end: '끝',
-  c1interlude: '챕터 1 맛보기 · 간주', c1verse: '챕터 1 맛보기 · 1절', c1end: '맛보기 끝',
+  reflect: '물그림자', cloth: '천 조각', chorus: '후렴 1, 예고', island: '섬', end: '챕터 0 끝',
 };
 
 /** 노 저어 가야 하는 거리 (화면 너비 단위) */
@@ -46,36 +32,10 @@ export const LAMP_X = ROW_DIST;
 export const HOOK_SEQ: ChordId[] = ['Db6', 'Ab', 'Db6', 'Ab'];
 /** 후렴 1 예고: 후렴 앞 8마디 */
 export const CHORUS_BARS: ChordId[] = section('chorus1').chords.slice(0, 8);
-/** 챕터 1 맛보기: 간주 8마디, 1절 앞 8마디 */
-export const INTERLUDE_BARS: ChordId[] = section('interlude').chords;
-export const VERSE_BARS: ChordId[] = section('verse').chords.slice(0, 8);
 /** 후렴 예고 동안 배가 저절로 나아가는 속도 (화면/초) */
 export const CHORUS_SPEED = 0.1;
 /** 박 판정 허용 오차 (초) */
 export const BEAT_WINDOW = 0.16;
-
-export type ObjKind = 'isle' | 'lamp' | 'refl' | 'whisper';
-
-export interface ObjDef {
-  id: string;
-  kind: ObjKind;
-  /** 세계 가로 위치 (화면 너비 단위, 배 출발점 = 0) */
-  wx?: number;
-  /** 배에 붙어 다니는 것: 배 기준 가로 위치 (0.5 = 배 바로 아래) */
-  rx?: number;
-  /** 수평선(0)~바다 아래 끝(1) 사이 높이 */
-  ry?: number;
-  /** 섬 크기 배율 */
-  s?: number;
-  /** 섬 모양 난수 seed */
-  seed?: number;
-  /** 등불이 반응하는 코드 */
-  chord?: ChordId;
-  /** pp(아주 여리게)로만 보이는 것 */
-  pp?: boolean;
-  /** 장면이 정할 때까지 파동에도 드러나지 않음 */
-  hidden?: boolean;
-}
 
 export const OBJECTS: ObjDef[] = [
   { id: 'isleA', kind: 'isle', wx: 0.72, ry: 0.36, s: 1, seed: 7 },
@@ -104,9 +64,6 @@ export const TEXT = {
   visionEnd: '아직은, 닿지 않는 바람',
   islandLine: '안개 너머, 섬 하나',
   chapterEnd: '챕터 0 · 안개',
-  toChapter1: '챕터 1 맛보기 · 아무 줄이나 긁으세요',
-  verseSilence: '줄이… 울리지 않는다',
-  demoEnd: '1절에는 기타가 없다',
   lampFound: (label: string) => `등불 발견 · ${label}`,
   lampTremble: '어딘가에서 등불이 떨렸다',
   hookLit: (label: string, n: number) => `${label} · ${n} / 4`,

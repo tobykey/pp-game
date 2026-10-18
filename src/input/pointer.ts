@@ -2,7 +2,7 @@
 // 한 방향으로 줄을 3개 이상 긁으면 '스트로크' 한 번 (= 노 한 번, 코드 한 번)
 import { onPluck, onStroke } from '../story/director';
 import { pluck, dynFrom } from '../world/strum';
-import { S } from '../world/state';
+import { S, view } from '../world/state';
 import { stringY, sx0, sx1 } from '../world/geometry';
 import { BRUSH_CURSOR, PICK_CURSOR } from '../render/pick';
 
@@ -17,6 +17,11 @@ interface Ptr {
 }
 
 let ptr: Ptr | null = null;
+/** 바다 위를 끌어 둘러보는 중: 시작 위치와 그때의 둘러본 정도 */
+let lookDrag: { x: number; look0: number } | null = null;
+/** 줄이 있는 영역의 위쪽 끝. 이 위(바다)를 끌면 둘러보기 */
+const stringsTop = () => view.H * 0.675;
+const MAX_LOOK = 0.65;
 const inSpan = (x: number) => x >= sx0() - 6 && x <= sx1() + 6;
 
 function hit(i: number, dyn: number, dir: number, x: number) {
@@ -29,13 +34,22 @@ function hit(i: number, dyn: number, dir: number, x: number) {
   r.n++; r.dyn += dyn;
   if (r.n >= 3 && !r.sent) {
     r.sent = true;
-    onStroke({ dir, dyn: r.dyn / r.n, chord: S.chord });
+    onStroke({ dir, dyn: r.dyn / r.n, chord: S.chord, x: ptr.x });
   }
 }
 
 export function bindPointer(cv: HTMLCanvasElement) {
   cv.addEventListener('pointerdown', e => {
-    if (!S.started || S.stringsVis < 0.3) return;
+    if (!S.started) return;
+    // 바다 위: 둘러보기 (챕터 1부터)
+    if (S.lookable && e.clientY < stringsTop()) {
+      cv.setPointerCapture(e.pointerId);
+      lookDrag = { x: e.clientX, look0: S.look };
+      S.dragLook = true;
+      cv.style.cursor = 'grabbing';
+      return;
+    }
+    if (S.stringsVis < 0.3) return;
     cv.setPointerCapture(e.pointerId);
     // 누르고 긁는 동안에만 피크를 쥔다
     cv.style.cursor = PICK_CURSOR;
@@ -51,6 +65,11 @@ export function bindPointer(cv: HTMLCanvasElement) {
   });
 
   cv.addEventListener('pointermove', e => {
+    if (lookDrag) {
+      // 오른쪽으로 끌면 왼쪽(지나온 쪽)이 보인다
+      S.look = Math.max(-MAX_LOOK, Math.min(MAX_LOOK, lookDrag.look0 - (e.clientX - lookDrag.x) / view.W));
+      return;
+    }
     if (!ptr) return;
     const now = performance.now(), x = e.clientX, y = e.clientY, dy = y - ptr.y, dt = Math.max(1, now - ptr.t);
     ptr.v = ptr.v * 0.55 + (Math.hypot(x - ptr.x, dy) / dt) * 0.45;
@@ -71,7 +90,10 @@ export function bindPointer(cv: HTMLCanvasElement) {
     ptr.x = x; ptr.y = y; ptr.t = now;
   });
 
-  const endPtr = () => { ptr = null; if (S.started) cv.style.cursor = BRUSH_CURSOR; };
+  const endPtr = () => {
+    ptr = null; lookDrag = null; S.dragLook = false;
+    if (S.started) cv.style.cursor = BRUSH_CURSOR;
+  };
   cv.addEventListener('pointerup', endPtr);
   cv.addEventListener('pointercancel', endPtr);
 }

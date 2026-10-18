@@ -7,8 +7,10 @@ export const hz = () => view.H * 0.2;
 /** 바다 아래 끝 y */
 export const sb = () => view.H * 0.655;
 export const boatY = () => hz() + (sb() - hz()) * 0.5;
-/** 배는 화면 가운데에 있고, 세상이 움직인다 */
-export const boatX = () => view.W * 0.5;
+/** 화면이 바라보는 세계 위치 = 배 위치 + 둘러본 만큼 */
+export const camX = () => S.boat + S.look;
+/** 배는 화면 가운데에 있고, 세상이 움직인다. 둘러보면 배도 화면에서 비켜난다 */
+export const boatX = () => view.W * (0.5 - S.look);
 /** 배 그림 크기 배율 */
 export const boatScale = () => Math.min(1.15, Math.max(0.62, view.W / 900));
 

@@ -4,7 +4,7 @@ import { scatterWhisper } from '../render/effects';
 import { onBeat, updateStory } from '../story/director';
 import { banner } from '../ui/hud';
 import { OBJ, S, cloth, fx, str, view } from './state';
-import { pos, toScreenX } from './geometry';
+import { camX, pos, toScreenX } from './geometry';
 import { tickRhythm } from './rhythm';
 import { updateBoat } from './rowing';
 
@@ -20,10 +20,15 @@ export function update(dt: number) {
 
   if (S.started) updateStory(dt);
 
-  // 배가 움직인 만큼 화면에 떠 있는 먹 방울·집중선도 함께 밀린다
-  const before = S.boat;
+  // 둘러보기: 손을 떼면 천천히 배 쪽으로 돌아온다
+  if (!S.dragLook) S.look = ease(S.look, 0, 1.6, dt);
+  // 그 사람의 자세는 내가 보지 않을 때(배가 화면 밖으로 비켜났을 때) 바뀐다 (복선: 잠든 게 아니었다)
+  if (S.lookable && Math.abs(S.look) > 0.55 && S.pose === 0) S.pose = 1;
+
+  // 배·화면이 움직인 만큼 화면에 떠 있는 먹 방울·집중선도 함께 밀린다
+  const before = camX();
   updateBoat(dt);
-  const dx = -(S.boat - before) * view.W;
+  const dx = -(camX() - before) * view.W;
   if (dx) { for (const p of fx.parts) p.x += dx; for (const l of fx.lines) l.x += dx; }
 
   for (const s of str) { s.amp *= Math.exp(-dt * 3); s.ph += dt * 38; }
@@ -51,6 +56,19 @@ export function update(dt: number) {
   fx.rip = fx.rip.filter(r => r.r < r.max);
 
   for (const o of OBJ) {
+    if (o.kind === 'painting' && !o.hidden) {
+      // 기억 그림이 움직이는 중
+      if (o.play > 0 && o.play < 1) o.play = Math.min(1, o.play + dt / 6);
+      // 액자 밖 그 사람: 화면 안에 들어와 있는 동안에만 서서히 보인다 (둘러본 사람만)
+      if (o.edge && !o.gone) {
+        const fx0 = toScreenX((o.wx ?? 0) + (o.edge === 'left' ? -1 : 1) * ((o.w ?? 0.9) / 2 + 0.09));
+        const onScreen = fx0 > view.W * 0.06 && fx0 < view.W * 0.94;
+        o.look = Math.max(0, Math.min(1, o.look + dt * (onScreen ? 0.9 : -0.25)));
+        if (o.look > 0.75) o.seen = true;
+      }
+      // 그림의 윤곽은 장면에 들어오면 늘 희미하게 남는다
+      o.vis = Math.max(o.vis, 0.35);
+    }
     o.vis = Math.max(0, o.vis - dt * (o.pp ? 0.07 : 0.16));
     o.detail = Math.max(0, o.detail - dt * 0.22);
     o.res = Math.max(0, o.res - dt * 0.55);
@@ -69,4 +87,5 @@ export function update(dt: number) {
   S.vision = ease(S.vision, S.visionT, 2, dt);
   S.hush = ease(S.hush, S.silence ? 1 : 0, 2.5, dt);
   S.zoom = ease(S.zoom, S.zoomT, 1.6, dt);
+  S.vortex = ease(S.vortex, S.vortexT, 1.5, dt);
 }

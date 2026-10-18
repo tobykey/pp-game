@@ -3,7 +3,9 @@ import { CHORDS } from '../data/chords';
 import { MODES } from '../data/modes';
 import { TEXT } from '../data/chapter0';
 import { OBJ, S, cloth, fx, obj, str, thorns, view, type WorldObj } from '../world/state';
-import { boatScale, boatX, boatY, hz, playerX, pos, sb, seaY, stringY, sx0, sx1, toScreenX } from '../world/geometry';
+import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0, sx1, toScreenX } from '../world/geometry';
+import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn } from './chapter1Art';
+import { figure } from './figure';
 import { clamp, lerp, rand } from '../util/math';
 import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT } from './palette';
@@ -18,7 +20,7 @@ export function draw() {
   ctx.save();
   if (S.shake > 0.3) ctx.translate(rand(-S.shake, S.shake), rand(-S.shake, S.shake));
   const acc = MODES[S.mode].accent;
-  const camPx = S.boat * W;
+  const camPx = camX() * W;
   // 인물 줌인 (1절의 기타 침묵): 기타를 안은 '나'에게 다가간다
   ctx.save();
   if (S.zoom > 0.001) {
@@ -38,6 +40,7 @@ export function draw() {
   ctx.strokeStyle = 'rgba(23,20,15,.35)'; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(0, hz() + 2); ctx.lineTo(W, hz() + 2); ctx.stroke();
   OBJ.filter(o => o.kind === 'isle').forEach(drawIsle);
+  OBJ.filter(o => o.kind === 'painting').forEach(drawPainting);
   // sea strokes — 가까운 물결일수록 빨리 지나간다
   ctx.strokeStyle = INK; ctx.lineCap = 'round';
   for (const s of backdrop.sea) {
@@ -53,6 +56,9 @@ export function draw() {
     if (o.kind === 'lamp') drawLamp(o);
     else if (o.kind === 'refl') drawRefl(o);
     else if (o.kind === 'whisper') drawWhisper(o);
+    else if (o.kind === 'rock') drawRock(o);
+    else if (o.kind === 'buoy') drawBuoy(o);
+    else if (o.kind === 'thorn') drawThorn(o);
   });
   drawCloth();
   drawBoat(acc);
@@ -83,6 +89,7 @@ export function draw() {
     ctx.fillRect(-40, -40, W + 80, H + 80);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
+  drawPaintingEdges();
   // 후렴 예고: 화면 전체에 형광이 번진다
   if (S.vision > 0.01) {
     ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = S.vision * 0.13; ctx.fillStyle = PINK;
@@ -207,13 +214,6 @@ function drawLamp(o: WorldObj) {
   ctx.restore(); ctx.globalAlpha = 1;
 }
 
-/** 기타를 안고 앉은 사람. 배 위의 '나'와 물그림자가 같은 모양이다 */
-function figure() {
-  ctx.beginPath(); ctx.arc(14, -34, 6, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(8, -27); ctx.quadraticCurveTo(2, -10, 6, -2); ctx.lineTo(24, -2); ctx.quadraticCurveTo(24, -16, 20, -27); ctx.fill();
-  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-4, -8); ctx.lineTo(34, -26); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(2, -8, 7, 5, -0.4, 0, Math.PI * 2); ctx.fill();
-}
 
 function drawRefl(o: WorldObj) {
   const v = Math.min(o.vis, o.detail);
@@ -233,12 +233,15 @@ function drawWhisper(o: WorldObj) {
   const w = ctx.measureText(txt).width;
   let x = p.x - w / 2;
   ctx.textAlign = 'left';
-  for (const ch of txt) {
+  const chars = [...txt];
+  chars.forEach((ch, ci) => {
     const cw = ctx.measureText(ch).width;
-    ctx.globalAlpha = o.vis * (0.55 + 0.25 * Math.sin(S.t * 2 + x * 0.05)); ctx.fillStyle = INK_SOFT;
+    // 가시를 삼킬수록 속삭임이 흐려진다. 마지막 글자는 거의 지워진다 (복선)
+    const fade = (1 - 0.4 * S.whisperFade) * (ci === chars.length - 1 ? 1 - 0.85 * S.whisperFade : 1);
+    ctx.globalAlpha = o.vis * fade * (0.55 + 0.25 * Math.sin(S.t * 2 + x * 0.05)); ctx.fillStyle = INK_SOFT;
     ctx.fillText(ch, x, p.y + Math.sin(S.t * 1.4 + x * 0.03) * 2);
     x += cw;
-  }
+  });
   ctx.globalAlpha = o.vis; ctx.fillStyle = PINK; ctx.fillRect(p.x + w / 2 + 8, p.y - 16, 10, 10);
   ctx.restore(); ctx.globalAlpha = 1;
 }
@@ -296,8 +299,17 @@ function drawBoat(acc: string) {
   ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(74, -13, 7, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(46, -9, 26, 7, -0.04, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(62, -14); ctx.quadraticCurveTo(36, -26, 12, -22); ctx.stroke();
-  ctx.beginPath(); ctx.arc(10, -22, 2.6, 0, Math.PI * 2); ctx.fill();
+  // 자세는 내가 보지 않을 때 바뀐다: 0 내 쪽으로 뻗은 손, 1 가슴에 얹은 손, 2 뱃전 아래로 늘어진 손
+  const arm = ([[36, -26, 12, -22], [54, -22, 47, -15], [40, -4, 22, -2]] as const)[S.pose] ?? [36, -26, 12, -22];
+  ctx.beginPath(); ctx.moveTo(62, -14); ctx.quadraticCurveTo(arm[0], arm[1], arm[2], arm[3]); ctx.stroke();
+  ctx.beginPath(); ctx.arc(arm[2] - 2, arm[3], 2.6, 0, Math.PI * 2); ctx.fill();
+  // 손목의 가는 금 (가시를 삼킨 흔적)
+  if (S.crack > 0) {
+    ctx.strokeStyle = 'rgba(234,230,222,.85)'; ctx.lineWidth = 0.7;
+    const hx = arm[2] + 4, hy = arm[3];
+    ctx.beginPath(); ctx.moveTo(hx - 1, hy - 2.5); ctx.lineTo(hx + 1, hy - 0.5); ctx.lineTo(hx - 0.5, hy + 0.8); ctx.lineTo(hx + 1.2, hy + 2.6); ctx.stroke();
+    ctx.strokeStyle = INK; ctx.lineWidth = 3;
+  }
   // 핫핑크 띠. 천 조각을 얻을 때마다 조금씩 짧아진다 (복선 7)
   const sl = S.sash;
   ctx.strokeStyle = PINK; ctx.lineWidth = 4;
@@ -317,7 +329,7 @@ function drawMist() {
     // 안개는 천천히 흘러간다. 화면 밖으로 완전히 나간 뒤에야 반대편으로 돌아온다 (순간 이동이 보이지 않게)
     // (이전 식은 매 프레임 화면 너비의 20%씩 건너뛰어 안개가 깜빡였다)
     m.u += m.sp * 0.016;
-    const u = wrap(m.u - S.boat * 0.6, -0.7, 1.7);
+    const u = wrap(m.u - camX() * 0.6, -0.7, 1.7);
     const x = u * W, y = hz() + (sb() - hz()) * m.v, r = m.r * Math.max(W, H);
     // 배 바로 위에 짙은 안개가 앉으면 주인공이 사라져 보여서, 배 근처 안개는 조금 옅게
     const dist = Math.hypot((x - boatX()) / W, (y - boatY()) / H);
@@ -395,7 +407,15 @@ function drawScore(acc: string) {
   ctx.globalAlpha = 1; ctx.font = `22px "Gowun Batang",serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   thorns.forEach((t, i) => {
     let x = kx + 14 + i * 15, y = ky + t.p * gap + 5, rot = 0, a = 1, col = INK;
-    if (t.fly) {
+    if (t.gone && !t.fly) return;
+    if (t.fly?.toBow) {
+      // 뽑힌 가시는 화면 밖이 아니라 뱃머리의 그 사람 쪽으로 떨어져 사라진다 (복선: 그 사람이 삼켰다)
+      const e = S.t - t.fly.t, k = Math.min(1, e / 1.4);
+      if (e > 1.6) return;
+      const tx = boatX() + 56 * boatScale(), ty = boatY() - 16;
+      x = lerp(x, tx, k); y = lerp(y, ty, k) - Math.sin(Math.PI * k) * 120; rot = t.fly.rot * e;
+      a = e < 1.1 ? 1 : 1 - (e - 1.1) / 0.5; col = '#ff2a7f';
+    } else if (t.fly) {
       const e = S.t - t.fly.t;
       if (e > 1.6) return;
       x += t.fly.vx * e; y += t.fly.vy * e + 260 * e * e; rot = t.fly.rot * e; a = 1 - e / 1.6; col = acc;

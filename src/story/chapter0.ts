@@ -1,16 +1,13 @@
 // 챕터 0 '안개' 장면 진행 (문구·배치는 data/chapter0.ts, 시나리오는 docs/scenario-ch0-1.md)
 import { CHORDS, type ChordId } from '../data/chords';
 import { MODES } from '../data/modes';
-import {
-  BEAT_WINDOW, CHORUS_BARS, CHORUS_SPEED, HOOK_SEQ, INTERLUDE_BARS, LAMP_X, ROW_DIST, STEPS, TEXT, VERSE_BARS, type StepId,
-} from '../data/chapter0';
+import { BEAT_WINDOW, CHORUS_BARS, CHORUS_SPEED, HOOK_SEQ, LAMP_X, ROW_DIST, TEXT } from '../data/chapter0';
+import { before, type StepId } from '../data/steps';
 import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { banner, ink, setProgress, unlock } from '../ui/hud';
-import { pos, boatX, boatY, stringY } from '../world/geometry';
-import { audioOut } from '../audio/engine';
-import { snap } from '../audio/kit';
+import { pos, boatX, boatY } from '../world/geometry';
 import { grooveBeat, nearestBeat, setBarChord, setTempo, spb } from '../world/rhythm';
 import { row } from '../world/rowing';
 import { OBJ, S, cloth, fx, obj, view } from '../world/state';
@@ -233,76 +230,17 @@ const end: StepHandler = {
   enter() { ink(null); S.cruise = 0; banner(TEXT.chapterEnd, 'soft', 4000); },
   update(_dt, el) {
     const g = obj('isleGoal'); g.vis = Math.max(g.vis, 1); g.detail = Math.max(g.detail, 0.4);
-    once('next', el > 5, () => ink(TEXT.toChapter1));
-  },
-  pluck() { if (done.has('next')) go('c1interlude'); },
-};
-
-// ---------- 챕터 1 맛보기 (결정 확인용): 간주 8마디 → 1절 8마디, 1절에서는 기타가 울리지 않는다 ----------
-
-/** 마디마다 코드를 자동으로 잡아 주며 노를 젓는 구간 (간주·1절 공용) */
-function barSection(bars: ChordId[], groove: 'chorus' | 'verse', next: StepId, onBar?: (bar: number, c: ChordId) => void): StepHandler {
-  let finished = false;
-  return {
-    enter() {
-      finished = false;
-      setTempo(130, groove);
-      setBarChord(bar => bars[bar] ?? null);
-      S.cruise = 0.06;
-    },
-    update() { S.vel = Math.min(S.vel, 0.17); },
-    beat(n) {
-      if (finished) return;
-      const gb = grooveBeat(n), bar = Math.floor(gb / 4);
-      if (gb < 0 || gb % 4 !== 0) return;
-      if (bar < bars.length) {
-        const c = bars[bar];
-        S.forced = c; resolveChord();
-        setProgress(`${CHORDS[c].label} · ${bar + 1} / ${bars.length}`);
-        onBar?.(bar, c);
-      } else { finished = true; go(next); }
-    },
-    stroke(s) { row(s.dir, 0.6); },
-  };
-}
-
-const c1interlude = barSection(INTERLUDE_BARS, 'chorus', 'c1verse', (_bar, c) => {
-  if (c === 'F') { S.flash = Math.max(S.flash, reduceMotion ? 0.05 : 0.2); S.flashCol = PINK; }
-});
-const c1interEnter = c1interlude.enter!;
-c1interlude.enter = () => { c1interEnter(); unlock(['Fsus4']); ink(null); };
-
-const c1verse = barSection(VERSE_BARS, 'verse', 'c1end', bar => {
-  if (bar === 1) ink(TEXT.verseSilence);
-  if (bar === 2) S.zoomT = 0;
-  if (bar === 6) ink(null);
-});
-const c1verseEnter = c1verse.enter!;
-c1verse.enter = () => {
-  c1verseEnter(); S.silence = true; unlock(['Fm', 'C']);
-  // 줄이 끊어지는 순간: 소리, 튀는 줄 조각, 작은 흔들림. 그리고 기타를 안은 '나'에게 다가간다
-  const o = audioOut(); if (o) snap(o.ac.currentTime + 0.02);
-  for (let i = 0; i < 6; i++) splash(view.W * rand(0.3, 0.7), stringY(i), 3, 0.35, INK);
-  if (!reduceMotion) S.shake = Math.max(S.shake, 5);
-  S.zoomT = 1;
-};
-
-const c1end: StepHandler = {
-  enter() {
-    setTempo(65, 'heart');
-    S.silence = false; S.zoomT = 0; S.forced = null; resolveChord(); setBarChord(null);
-    S.cruise = 0;
-    ink(TEXT.demoEnd);
+    // 챕터 0이 끝나면 곡처럼 그대로 간주로 이어진다
+    if (el > 4.5) goLater('c1sail', el, 0);
   },
 };
 
 // ---------- 공통 래퍼: 예약된 장면 전환 처리 ----------
 let currentEl = 0;
-const all: Record<StepId, StepHandler> = {
+const all: Partial<Record<StepId, StepHandler>> = {
   wake, whisper, row: rowStep, lamps: lampsStep, hook, reflect, cloth: clothStep, chorus, island, end,
-  c1interlude, c1verse, c1end,
 };
-for (const h of Object.values(all)) {
+for (const h of Object.values(all) as StepHandler[]) {
   const enter = h.enter, update = h.update;
   h.enter = () => { done.clear(); pending = null; enter?.(); };
   h.update = (dt, el) => {
@@ -316,9 +254,8 @@ registerSteps(all);
 /**
  * 중간 장면으로 바로 갈 때(이어하기·장면 고르기), 그 앞 장면들이 끝났을 때의 상태를 만들어 둔다
  */
-export function fastForward(target: StepId) {
-  const order = STEPS.map(s => s.id);
-  const passed = (id: StepId) => order.indexOf(id) < order.indexOf(target);
+export function fastForward0(target: StepId) {
+  const passed = (id: StepId) => before(id, target);
   if (passed('wake')) { S.black = 0; S.reveal = 1; S.stringsVis = 1; }
   if (passed('row')) { S.boat = ROW_DIST; S.vel = 0; }
   if (passed('lamps')) {
@@ -328,4 +265,5 @@ export function fastForward(target: StepId) {
   if (passed('hook')) { lamps().forEach(o => o.lit = 2); S.road = 1; }
   if (passed('cloth')) { cloth.tied = true; S.scrap = 1; S.sash = S.sashT = 0.8; }
   if (passed('chorus')) { S.boat = LAMP_X + 1.65; S.road = 0; unlock(['Db', 'Eb', 'Cm', 'F']); }
+  if (passed('island')) { const g = obj('isleGoal'); g.hidden = false; g.wx = S.boat + 0.78; }
 }

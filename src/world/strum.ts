@@ -1,5 +1,9 @@
 // 줄 하나를 튕겼을 때 일어나는 일: 소리 + 줄 진동 + 파동 (+ 세면 ff 연출)
-import { CHORDS } from '../data/chords';
+import { CHORDS, ROOT, type ChordId } from '../data/chords';
+import { audioOut } from '../audio/engine';
+import { bass } from '../audio/kit';
+import { fx, view } from './state';
+import { boatY, toWorldX } from './geometry';
 import { playNote } from '../audio/engine';
 import { rockHit, spawnRipple } from '../render/effects';
 import { clamp } from '../util/math';
@@ -21,4 +25,18 @@ export function pluck(i: number, dyn: number, dir: number, x: number) {
   spawnRipple(i, dyn, dir, x, midi == null);
   S.dyn = { m: dynMark(dyn), d: dyn, t: S.t };
   if (dyn > 0.84 && !S.mute && !S.silence) rockHit(x, dyn);
+}
+
+/**
+ * 1절(줄이 끊어진 동안): 스트로크 한 번 = 왼손 코드의 근음을 베이스가 울림.
+ * 낮고 넓게 퍼지지만 윤곽만 보이는 파동 (굵은 줄의 성질)
+ */
+export function bassStroke(chord: ChordId, x: number) {
+  if (chord === 'open') return;
+  const o = audioOut();
+  if (o) bass(o.ac.currentTime + 0.005, ROOT[chord], 0.9, 1.4);
+  fx.rip.push({
+    wx: toWorldX(Math.max(view.W * 0.05, Math.min(view.W * 0.95, x))), y: boatY() + 24, r: 6,
+    max: view.W * 1.1, sp: 420, dyn: 0.55, t: 0, acc: '#5d564c',
+  });
 }

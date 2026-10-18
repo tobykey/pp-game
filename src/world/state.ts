@@ -1,7 +1,10 @@
 // 게임 전체가 함께 읽고 쓰는 상태
 import type { ChordId } from '../data/chords';
 import type { ModeId } from '../data/modes';
-import { OBJECTS, type ObjDef, type StepId } from '../data/chapter0';
+import { OBJECTS } from '../data/chapter0';
+import { OBJECTS1 } from '../data/chapter1';
+import type { ObjDef } from '../data/defs';
+import type { StepId } from '../data/steps';
 import { seeded } from '../util/math';
 
 /** 화면 크기 (CSS 픽셀)와 화면 배율 */
@@ -79,6 +82,22 @@ export const S = {
   hush: 0,
   /** 인물 줌인 (0 ~ 1) */
   zoom: 0, zoomT: 0,
+
+  // 챕터 1
+  /** 둘러보기: 화면을 배 기준에서 옆으로 돌려 본 정도 (화면 너비 단위) */
+  look: 0,
+  /** 둘러보기를 쓸 수 있는지 (챕터 1부터) */
+  lookable: false,
+  /** 지금 바다 위를 끌어 둘러보는 중인지 */
+  dragLook: false,
+  /** 그 사람의 자세 (0 손을 내 쪽으로 뻗음, 1 가슴에 손, 2 기타 쪽으로). 내가 보지 않을 때 바뀐다 */
+  pose: 0,
+  /** 그 사람의 손목에 간 금 */
+  crack: 0,
+  /** 가시 둘레 소용돌이 */
+  vortex: 0, vortexT: 0,
+  /** 속삭임이 흐려진 정도 */
+  whisperFade: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }
@@ -93,7 +112,7 @@ export interface SpeedLine { x: number; y: number; a: number; l: number; life: n
 export const fx = { rip: [] as Ripple[], parts: [] as Particle[], lines: [] as SpeedLine[] };
 
 /** 조표의 플랫 넷 = 심장의 가시 넷. p는 오선 위 높이. 챕터 0에서는 하나도 빠지지 않는다 */
-export interface Thorn { n: string; p: number; gone: boolean; fly: { t: number; vx: number; vy: number; rot: number } | null }
+export interface Thorn { n: string; p: number; gone: boolean; fly: { t: number; vx: number; vy: number; rot: number; toBow?: boolean } | null }
 export const thorns: Thorn[] = [
   { n: 'B', p: 2 }, { n: 'E', p: 0.5 }, { n: 'A', p: 2.5 }, { n: 'D', p: 1 },
 ].map(o => ({ ...o, gone: false, fly: null }));
@@ -108,9 +127,19 @@ export interface WorldObj extends ObjDef {
   res: number;
   /** 섬 능선 점들 */
   pts: [number, number][];
+  /** 바위: 부서짐 · 그림 속 '새 줄을 든 손': 흩어짐 */
+  gone: boolean;
+  /** 기억 그림이 움직이는 진행 (0~1) */
+  play: number;
+  /** 액자 밖 그 사람이 보인 정도 (0~1) — 둘러본 사람만 */
+  look: number;
+  /** 액자 밖 그 사람을 한 번이라도 제대로 봤는지 (기억 테스트용) */
+  seen: boolean;
 }
 
-export const OBJ: WorldObj[] = OBJECTS.map(o => ({ ...o, vis: 0, detail: 0, found: false, lit: 0, res: 0, pts: [] }));
+export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1].map(o => ({
+  ...o, vis: 0, detail: 0, found: false, lit: 0, res: 0, pts: [], gone: false, play: 0, look: 0, seen: false,
+}));
 OBJ.filter(o => o.kind === 'isle').forEach(o => {
   const r = seeded(o.seed ?? 1);
   const n = 9;

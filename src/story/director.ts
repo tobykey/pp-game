@@ -1,6 +1,6 @@
 // 장면 진행 관리: 지금 장면에 입력(줄 튕김·스트로크·박)을 전달하고, 장면을 바꾸고, 진행을 저장한다
 import type { ChordId } from '../data/chords';
-import { STEPS, type StepId } from '../data/chapter0';
+import { STEPS, type StepId } from '../data/steps';
 import { setTempo } from '../world/rhythm';
 import { S } from '../world/state';
 import { setMode, setObjective, setProgress } from '../ui/hud';
@@ -10,6 +10,8 @@ export interface Stroke {
   dir: number;
   dyn: number;
   chord: ChordId;
+  /** 긁은 위치 (화면 x) */
+  x: number;
 }
 
 export interface StepHandler {
@@ -29,7 +31,8 @@ let handlers = {} as Record<StepId, StepHandler>;
 let cur: StepHandler = {};
 let el = 0;
 
-export function registerSteps(h: Record<StepId, StepHandler>) { handlers = h; }
+/** 챕터마다 자기 장면들을 등록한다 */
+export function registerSteps(h: Partial<Record<StepId, StepHandler>>) { handlers = { ...handlers, ...h }; }
 
 export function go(id: StepId) {
   const def = STEPS.find(s => s.id === id)!;
