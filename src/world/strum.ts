@@ -18,8 +18,10 @@ export function dynMark(d: number) { return d < 0.15 ? 'pp' : d < 0.3 ? 'p' : d 
 /** i: 줄 번호(0 = 6번 줄), dir: 1 다운 / -1 업, x: 긁은 위치 */
 export function pluck(i: number, dyn: number, dir: number, x: number) {
   // 기타 침묵(1절): 줄은 먹먹하게 틱 소리만 내고, 파동도 짧다
-  const midi = S.silence ? null : CHORDS[S.chord].v[i];
-  playNote(midi, S.silence ? dyn * 0.4 : dyn);
+  // 멈춘 시간(챕터 2): 팜뮤트가 아니면 소리가 빗방울에 막혀 뭉개진다
+  const muffled = S.silence || (S.frozen && !S.mute);
+  const midi = muffled ? null : CHORDS[S.chord].v[i];
+  playNote(midi, muffled ? dyn * 0.4 : dyn);
   const s = str[i];
   s.amp = Math.min(15, 2.5 + dyn * 14) * (S.mute ? 0.45 : 1) * (S.silence ? 0.3 : 1); s.hot = S.silence ? 0 : dyn; s.ph = 0;
   spawnRipple(i, dyn, dir, x, midi == null);
@@ -39,4 +41,16 @@ export function bassStroke(chord: ChordId, x: number) {
     wx: toWorldX(Math.max(view.W * 0.05, Math.min(view.W * 0.95, x))), y: boatY() + 24, r: 6,
     max: view.W * 1.1, sp: 420, dyn: 0.55, t: 0, acc: '#5d564c',
   });
+}
+
+/**
+ * 코드 하나를 한 번 긁어 들려준다 (되받아 치기의 '들려주는 소리' 등). muted면 팜뮤트로 짧게
+ */
+export function strumChord(chord: ChordId, dyn: number, muted: boolean) {
+  CHORDS[chord].v.forEach((m, i) => setTimeout(() => {
+    const prev = S.mute; S.mute = muted;
+    playNote(m, dyn);
+    S.mute = prev;
+    str[i].amp = Math.max(str[i].amp, 3 + dyn * 6);
+  }, i * 18));
 }

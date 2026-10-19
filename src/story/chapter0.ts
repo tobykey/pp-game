@@ -159,7 +159,7 @@ const clothStep: StepHandler = {
   stroke() {
     if (!cloth.active || cloth.tied || !done.has('arrive')) return;
     cloth.tied = true; cloth.active = false; tiedAt = currentEl;
-    S.sashT = 0.8;
+    S.sashT = 0.8; S.pieces = Math.max(S.pieces, 1);
     ink(null);
     splash(boatX() + 10, boatY() - 60, 18, 0.5, PINK);
   },
@@ -268,7 +268,7 @@ export function fastForward0(target: StepId) {
     unlock(lamps().map(o => o.chord!) as ChordId[]);
   }
   if (passed('hook')) { lamps().forEach(o => o.lit = 2); S.road = 1; }
-  if (passed('cloth')) { cloth.tied = true; S.scrap = 1; S.sash = S.sashT = 0.8; }
+  if (passed('cloth')) { cloth.tied = true; S.scrap = 1; S.pieces = 1; S.sash = S.sashT = 0.8; }
   if (passed('chorus')) { S.boat = LAMP_X + 1.65; S.road = 0; unlock(['Db', 'Eb', 'Cm', 'F']); }
   if (passed('island')) { const g = obj('isleGoal'); g.hidden = false; g.wx = S.boat + 0.78; }
 }

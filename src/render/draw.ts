@@ -6,6 +6,7 @@ import { OBJ, S, cloth, fx, obj, str, thorns, view, type WorldObj } from '../wor
 import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0, sx1, toScreenX } from '../world/geometry';
 import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn, drawThornGlow } from './chapter1Art';
 import { figure } from './figure';
+import { drawColumn, drawFallingRain, drawFrozenRain, drawGuardWaves, drawShield } from './chapter2Art';
 import { clamp, lerp, rand } from '../util/math';
 import { beatPos, spb } from '../world/rhythm';
 import { backdrop, ctx } from './canvas';
@@ -52,6 +53,7 @@ export function draw() {
   }
   ctx.globalAlpha = 1;
   drawRipples();
+  drawFrozenRain();
   drawRoad();
   OBJ.forEach(o => {
     if (o.kind === 'lamp') drawLamp(o);
@@ -60,10 +62,14 @@ export function draw() {
     else if (o.kind === 'rock') drawRock(o);
     else if (o.kind === 'buoy') drawBuoy(o);
     else if (o.kind === 'thorn') drawThorn(o);
+    else if (o.kind === 'column') drawColumn(o);
   });
   drawCloth();
   drawBoat(acc);
+  drawShield();
+  drawGuardWaves();
   drawMist();
+  drawFallingRain();
   // speed lines
   for (const l of fx.lines) {
     ctx.globalAlpha = Math.min(1, l.life); ctx.strokeStyle = l.c; ctx.lineWidth = l.c === INK ? 2.5 : 4;
@@ -91,6 +97,8 @@ export function draw() {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
   drawPaintingEdges();
+  // 날아오는 천 조각도 색이 빠진 세상 위에 핑크로 (그 사람의 색)
+  drawFlyers();
   // 가시를 뽑을 순간: 세상이 어두워지고 가시만 빛난다
   if (S.dim > 0.01) {
     ctx.globalAlpha = S.dim * 0.75; ctx.fillStyle = '#14120f'; ctx.fillRect(-40, -40, W + 80, H + 80); ctx.globalAlpha = 1;
@@ -299,13 +307,14 @@ function drawBoat(acc: string) {
     ctx.lineWidth = 9; ctx.globalAlpha = (1 - S.sail * 5) * (1 - S.scrap * 2);
     ctx.beginPath(); ctx.moveTo(mx + 2, -118); ctx.lineTo(mx + 2, -40); ctx.stroke(); ctx.globalAlpha = 1;
   }
-  // 천 조각 돛: 돛대 위쪽에 묶여 나부끼는 작은 핑크 천
-  if (S.scrap > 0.01 && S.sail < 0.6) {
-    const p = S.scrap, fl = Math.sin(S.t * 3.2) * 4;
+  // 천 조각 돛: 모은 조각만큼 돛대에 핑크 천이 묶여 나부낀다 ('희망의 돛' 여섯 조각)
+  const nPieces = Math.max(S.pieces, S.scrap > 0.01 ? 1 : 0);
+  for (let i = 0; i < nPieces && S.sail < 0.6; i++) {
+    const p = i === 0 ? S.scrap || 1 : 1, fl = Math.sin(S.t * 3.2 + i * 1.3) * 4, y0 = -126 + i * 17, len = 44 - i * 3;
     ctx.globalAlpha = Math.min(1, p * 1.5) * (1 - S.sail);
     ctx.fillStyle = PINK; ctx.strokeStyle = INK; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(mx, -126); ctx.quadraticCurveTo(mx + 30 * p, -116 + fl, mx + 44 * p, -100 + fl);
-    ctx.quadraticCurveTo(mx + 22 * p, -98, mx, -88); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx, y0); ctx.quadraticCurveTo(mx + len * 0.7 * p, y0 + 10 + fl, mx + len * p, y0 + 26 + fl);
+    ctx.quadraticCurveTo(mx + len * 0.5 * p, y0 + 28, mx, y0 + 38); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.globalAlpha = 1;
   }
   // 나: 배 뒤쪽에 앉아 기타를 안고 있다
@@ -337,6 +346,26 @@ function drawBoat(acc: string) {
   ctx.strokeStyle = 'rgba(234,230,222,.35)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(80, 6); ctx.quadraticCurveTo(0, 13, -78, 2); ctx.stroke();
   ctx.restore();
+}
+
+/** 날아오는 천 조각: 돛대 꼭대기로 곡선을 그리며. 타 버리는 조각은 도중에 재가 된다 */
+function drawFlyers() {
+  const s = boatScale(), tx = boatX() - 8 * s, ty = boatY() - 118 * s;
+  for (const f of fx.flyers) {
+    const k = Math.min(1, (S.t - f.t) / f.dur);
+    const x = lerp(f.x, tx, k), y = lerp(f.y, ty, k) - Math.sin(Math.PI * k) * 90;
+    const burnt = f.burn ? Math.max(0, (k - 0.35) / 0.4) : 0;
+    if (f.burn && k > 0.75) {
+      if (Math.random() < 0.6) fx.parts.push({ x, y, vx: rand(-40, 40), vy: rand(-80, -20), r: rand(1, 2.5), life: 0.8, dec: 1.4, c: INK_SOFT });
+      continue;
+    }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(S.t * 6 + f.t) * 0.6);
+    ctx.globalAlpha = 1 - burnt * 0.6; ctx.fillStyle = burnt > 0.3 ? INK_SOFT : PINK; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-14, -6); ctx.quadraticCurveTo(0, -12, 14, -4); ctx.lineTo(10, 8); ctx.quadraticCurveTo(-2, 4, -12, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (burnt > 0) { ctx.fillStyle = '#ffb347'; ctx.globalAlpha = 0.7 * (1 - burnt); ctx.beginPath(); ctx.arc(8, 4, 5 * burnt + 2, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
 }
 
 const mist = [...Array(8)].map((_, i) => ({ u: Math.random(), v: rand(0.05, 0.85), r: rand(0.18, 0.38), sp: rand(0.004, 0.012) * (i % 2 ? 1 : -1) }));
@@ -473,7 +502,8 @@ function drawBeatGuide(cx: number, cy: number, acc: string) {
   if (S.groove !== 'none' && S.stringsVis > 0.5) {
     const ph = ((beatPos() % 1) + 1) % 1;
     const r = 44 + 70 * (1 - ph);
-    ctx.save(); ctx.strokeStyle = S.groove === 'heart' ? INK : acc; ctx.lineWidth = 3 + 3 * ph;
+    // 노란 빗줄기가 곧 덮칠 때는 원이 노랗게 (팜뮤트 가드 신호)
+    ctx.save(); ctx.strokeStyle = S.guardCue ? '#e0b800' : S.groove === 'heart' ? INK : acc; ctx.lineWidth = (S.guardCue ? 5 : 3) + 3 * ph;
     ctx.globalAlpha = 0.2 + 0.7 * ph * ph;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
     // 박이 울린 순간: 도장 테두리가 번진다

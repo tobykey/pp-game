@@ -65,7 +65,8 @@ export function update(dt: number) {
       if (o.edge && !o.gone) {
         const fx0 = toScreenX((o.wx ?? 0) + (o.edge === 'left' ? -1 : 1) * ((o.w ?? 0.9) / 2 + 0.09));
         const onScreen = fx0 > view.W * 0.06 && fx0 < view.W * 0.94;
-        o.look = Math.max(0, Math.min(1, o.look + dt * (onScreen ? 0.9 : -0.25)));
+        // 실제로 ← → 키로 둘러보는 동안에만 드러난다 (배가 다가가며 저절로 지나치는 것으로는 안 보임)
+        o.look = Math.max(0, Math.min(1, o.look + dt * (onScreen && S.dragLook ? 0.9 : -0.25)));
         if (o.look > 0.75) o.seen = true;
       }
       // 그림의 윤곽은 장면에 들어오면 늘 희미하게 남는다
@@ -84,11 +85,17 @@ export function update(dt: number) {
   S.seal = Math.max(0, S.seal - dt * 4);
   S.sail = ease(S.sail, S.sailT, 2.4, dt);
   S.scrap = ease(S.scrap, cloth.tied ? 1 : 0, 1.6, dt);
+  // 조각이 늘 때마다 그 사람의 띠가 짧아진다 (복선 7)
+  if (S.pieces > 0) S.sashT = Math.max(0.25, 0.8 - 0.09 * (S.pieces - 1));
   S.sash = ease(S.sash, S.sashT, 0.8, dt);
+  fx.flyers = fx.flyers.filter(f => S.t - f.t < f.dur + 0.1);
   S.fog = ease(S.fog, S.fogT, 1.2, dt);
   S.vision = ease(S.vision, S.visionT, 2, dt);
   S.hush = ease(S.hush, S.silence ? 1 : 0, 2.5, dt);
   S.zoom = ease(S.zoom, S.zoomT, 1.6, dt);
   S.vortex = ease(S.vortex, S.vortexT, 1.5, dt);
   S.dim = ease(S.dim, S.dimT, 2.5, dt);
+  S.frozenVis = ease(S.frozenVis, S.frozenVisT, 1.2, dt);
+  S.rainFall = ease(S.rainFall, S.rainFallT, 1.5, dt);
+  S.shield = Math.max(0, S.shield - dt * 1.8);
 }

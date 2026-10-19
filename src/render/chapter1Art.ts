@@ -4,6 +4,7 @@ import { pos, toScreenX } from '../world/geometry';
 import { ctx } from './canvas';
 import { BRUSH } from './palette';
 import { figure } from './figure';
+import { footprints, meetScene, segno } from './chapter2Art';
 import { INK, INK_SOFT, PAPER } from './palette';
 
 /** 그 사람의 색. 액자 밖에서만 보인다 (둘러본 사람만) */
@@ -33,8 +34,11 @@ export function drawPainting(o: WorldObj) {
   const P = (u: number, v: number) => [f.x + u * f.w, f.y + v * f.h] as const;
   if (o.scene === 'room') roomScene(P, f, o.play);
   else if (o.scene === 'stage') stageScene(P, f, o.play, o.gone);
+  else if (o.scene === 'meet') meetScene(P, f, o.play);
   else rainScene(P, f);
   ctx.restore();
+  // 첫 만남의 그림이 다 움직이고 나면 액자 모서리에 세뇨가 찍힌다
+  if (o.scene === 'meet' && o.play >= 1) segno(f.x + f.w - 22, f.y + 26, Math.min(1, a));
   ctx.restore(); ctx.globalAlpha = 1;
 }
 
@@ -136,6 +140,8 @@ function rainScene(P: PFn, f: Box) {
 function edgeFigure(o: WorldObj, f: Box) {
   const s = f.h / 120, left = o.edge === 'left';
   const x = left ? f.x - view.W * 0.09 : f.x + f.w + view.W * 0.09, y = f.y + f.h * 0.86;
+  // 첫 만남: 사람 대신, 먼저 와서 기다리던 발자국
+  if (o.scene === 'meet') { footprints(x, y, o.look); return; }
   ctx.save(); ctx.translate(x, y); if (!left) ctx.scale(-1, 1);
   ctx.globalAlpha = o.look * 0.7; ctx.fillStyle = INK_SOFT; ctx.strokeStyle = INK_SOFT;
   // 서 있는 사람의 실루엣 (얼굴은 그리지 않는다)

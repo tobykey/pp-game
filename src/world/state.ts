@@ -3,6 +3,7 @@ import type { ChordId } from '../data/chords';
 import type { ModeId } from '../data/modes';
 import { OBJECTS } from '../data/chapter0';
 import { OBJECTS1 } from '../data/chapter1';
+import { OBJECTS2 } from '../data/chapter2';
 import type { ObjDef } from '../data/defs';
 import type { StepId } from '../data/steps';
 import { seeded } from '../util/math';
@@ -10,7 +11,7 @@ import { seeded } from '../util/math';
 /** 화면 크기 (CSS 픽셀)와 화면 배율 */
 export const view = { W: 0, H: 0, DPR: 1 };
 
-export type Groove = 'none' | 'heart' | 'hook' | 'chorus' | 'verse';
+export type Groove = 'none' | 'heart' | 'hook' | 'chorus' | 'verse' | 'pre';
 
 export const S = {
   started: false,
@@ -72,8 +73,10 @@ export const S = {
   vision: 0, visionT: 0,
   /** 활짝 편 돛 (예고에서만) */
   sail: 0, sailT: 0,
-  /** 천 조각 돛 */
+  /** 천 조각 돛 (첫 조각이 감기는 연출) */
   scrap: 0,
+  /** 모은 '희망의 돛' 조각 수 (0~6). 조각이 늘 때마다 그 사람의 띠가 짧아진다 */
+  pieces: 0,
   /** 그 사람의 띠 길이 (천 조각을 얻으면 조금 짧아짐) */
   sash: 1, sashT: 1,
   /** 기타 침묵 (1절): 줄을 긁어도 소리 대신 먹먹한 틱만 */
@@ -113,6 +116,18 @@ export const S = {
   vortex: 0, vortexT: 0,
   /** 속삭임이 흐려진 정도 */
   whisperFade: 0,
+
+  // 챕터 2
+  /** 멈춘 시간: 평소 스트로크는 빗방울에 막혀 뭉개지고, 팜뮤트만 또렷하다 */
+  frozen: false,
+  /** 멈춘 비가 화면에 보이는 정도 */
+  frozenVis: 0, frozenVisT: 0,
+  /** 쏟아지는 비 */
+  rainFall: 0, rainFallT: 0,
+  /** 곧 노란 빗줄기가 덮친다 (박 안내 원이 노랗게) */
+  guardCue: false,
+  /** 막았을 때 배 위에 펴지는 우산 모양 먹 번짐 */
+  shield: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }
@@ -122,11 +137,13 @@ export const str: StringState[] = [...Array(6)].map(() => ({ amp: 0, ph: 0, hot:
 export interface Ripple { wx: number; y: number; r: number; max: number; sp: number; dyn: number; t: number; acc: string }
 export interface Particle { x: number; y: number; vx: number; vy: number; r: number; life: number; dec: number; c: string }
 export interface SpeedLine { x: number; y: number; a: number; l: number; life: number; c: string }
+/** 날아오는 천 조각 (burn이면 도중에 타 버린다 = 잃은 조각) */
+export interface Flyer { x: number; y: number; t: number; dur: number; burn: boolean }
 /** 박 판정 먹 도장 */
 export interface Mark { kind: 'perfect' | 'good' | 'miss'; t: number }
 
 /** 파동 · 먹 방울 · 집중선 */
-export const fx = { rip: [] as Ripple[], parts: [] as Particle[], lines: [] as SpeedLine[], marks: [] as Mark[] };
+export const fx = { rip: [] as Ripple[], parts: [] as Particle[], lines: [] as SpeedLine[], marks: [] as Mark[], flyers: [] as Flyer[] };
 
 /** 조표의 플랫 넷 = 심장의 가시 넷. p는 오선 위 높이. 챕터 0에서는 하나도 빠지지 않는다 */
 export interface Thorn { n: string; p: number; gone: boolean; fly: { t: number; vx: number; vy: number; rot: number; toBow?: boolean } | null }
@@ -154,7 +171,7 @@ export interface WorldObj extends ObjDef {
   seen: boolean;
 }
 
-export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1].map(o => ({
+export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1, ...OBJECTS2].map(o => ({
   ...o, vis: 0, detail: 0, found: false, lit: 0, res: 0, pts: [], gone: false, play: 0, look: 0, seen: false,
 }));
 OBJ.filter(o => o.kind === 'isle').forEach(o => {

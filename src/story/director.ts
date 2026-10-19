@@ -14,6 +14,9 @@ export interface Stroke {
   x: number;
 }
 
+/** 여섯 줄을 한 방향으로 다 긁었을 때 */
+export interface Sweep { dir: number; dur: number }
+
 export interface StepHandler {
   enter?(): void;
   /** el: 이 장면에 들어온 뒤 지난 시간 (초) */
@@ -22,6 +25,8 @@ export interface StepHandler {
   stroke?(s: Stroke): void;
   /** 줄 하나라도 튕겼을 때 */
   pluck?(): void;
+  /** 여섯 줄을 한 방향으로 다 긁었을 때 (얼마나 천천히 긁었는지) */
+  sweep?(s: Sweep): void;
   /** 새 박이 시작될 때 */
   beat?(n: number): void;
 }
@@ -55,6 +60,7 @@ export const elapsed = () => el;
 export function updateStory(dt: number) { el += dt; cur.update?.(dt, el); }
 export function onStroke(s: Stroke) { if (S.started) cur.stroke?.(s); }
 export function onPluck() { if (S.started) cur.pluck?.(); }
+export function onSweep(s: Sweep) { if (S.started) cur.sweep?.(s); }
 export function onBeat(n: number) { cur.beat?.(n); }
 
 /** 이어하기용 저장. 저장이 막힌 브라우저에서도 게임은 그대로 돈다 */

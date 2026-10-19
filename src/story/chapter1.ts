@@ -2,13 +2,13 @@
 // 간주: 기타가 가장 크게 우는 마지막 구간 → 섬에 닿는 순간 줄이 끊어짐 → 1절: 베이스로 탐색
 import { CHORDS, type ChordId } from '../data/chords';
 import {
-  C1_START, INTERLUDE_BARS, P_RAIN, P_ROOM, P_STAGE, RAIN_BARS, ROOM_SEQ, SNAP_AT, STAGE_BARS, STAGE_SEQ, TEXT1,
+  C1_START, INTERLUDE_BARS, PAINT_W, P_RAIN, P_ROOM, P_STAGE, RAIN_BARS, ROOM_SEQ, SNAP_AT, STAGE_BARS, STAGE_SEQ, TEXT1,
 } from '../data/chapter1';
 import { before, type StepId } from '../data/steps';
 import { audioOut, playNote } from '../audio/engine';
 import { snap } from '../audio/kit';
 import { resolveChord } from '../input/chord';
-import { splash } from '../render/effects';
+import { flyPiece, splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { banner, chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
 import { pos, stringY, toScreenX } from '../world/geometry';
@@ -166,7 +166,12 @@ const room: StepHandler = {
     const p = obj('pRoom');
     if (roomPuzzle.solved) {
       once('play', true, () => { p.play = 0.001; ink(null); });
-      if (p.play >= 1) goLater('c1stage', el, 1.2);
+      // 그림이 끝나면 액자 밖에서 내밀어졌던 담요가 천 조각이 되어 날아온다 (조각 2)
+      once('piece', p.play >= 1, () => {
+        const d = flyPiece(toScreenX(P_ROOM - PAINT_W / 2 - 0.09), view.H * 0.3);
+        setTimeout(() => { S.pieces = Math.max(S.pieces, 2); }, d * 1000);
+      });
+      if (p.play >= 1) goLater('c1stage', el, 2.6);
     }
   },
   stroke(s) { verseStroke(s); roomPuzzle.stroke(s.chord); },
@@ -287,6 +292,8 @@ function pullThorn() {
     if (!p.gone) {
       const hx = toScreenX((p.wx ?? 0) - (p.w ?? 0.9) / 2 - 0.09);
       splash(hx, view.H * 0.3, 16, 0.6, PINK);
+      // 새 줄의 조각은 돛대에 닿기 전에 타 버린다 (잃은 조각)
+      flyPiece(hx, view.H * 0.3, true);
       p.gone = true;
     }
     S.crack = 1; S.pose = 2;
@@ -316,7 +323,10 @@ const rain: StepHandler = {
       if (rk >= RAIN_BARS.length) {
         // 마지막 Fm Fm: 해결되지 않은 채 음악이 멈춘다
         rainDone = true; setTempo(65, 'none'); setProgress(''); cue(null); S.nextChord = null;
-        goLater('c1after', currentEl, 1.5);
+        // 거절했던 우산이 천 조각이 되어 날아온다 (조각 3)
+        const d = flyPiece(toScreenX(P_RAIN + PAINT_W / 2 + 0.09), view.H * 0.3);
+        setTimeout(() => { S.pieces = Math.max(S.pieces, 3); }, d * 1000);
+        goLater('c1after', currentEl, 2.6);
         return;
       }
       ink(null);
@@ -356,7 +366,9 @@ const after: StepHandler = {
       S.pose = S.pose === 2 ? 1 : 2;
     });
     if (el > 8.2) S.black = Math.max(0, S.black - dt / 1.5);
-    once('end', el > 10.5, () => { banner(TEXT1.chapterEnd, 'soft', 4000); setObjective(TEXT1.nextChapter); });
+    once('end', el > 10.5, () => { banner(TEXT1.chapterEnd, 'soft', 4000); });
+    // 곡처럼 1절 끝에서 프리코러스로 이어진다
+    if (el > 14.5) goLater('c2frozen', el, 0);
   },
 };
 
@@ -383,7 +395,7 @@ export function fastForward1(target: StepId) {
   S.boat = C1_START;
   if (passed('c1sail')) { OBJ.filter(o => o.kind === 'rock').forEach(o => o.gone = true); S.boat = SNAP_AT; }
   if (passed('c1snap')) { S.boat = P_ROOM; S.silence = true; S.hush = 1; obj('pRoom').hidden = false; unlock(VERSE_CHORDS); }
-  if (passed('c1room')) { roomBuoys().forEach(o => { o.hidden = false; o.lit = 1; }); obj('pRoom').play = 1; }
+  if (passed('c1room')) { roomBuoys().forEach(o => { o.hidden = false; o.lit = 1; }); obj('pRoom').play = 1; S.pieces = 2; }
   if (passed('c1stage')) {
     S.boat = P_STAGE; const p = obj('pStage'); p.hidden = false; p.play = 1;
     stageBuoys().forEach(o => { o.hidden = false; o.lit = 1; }); obj('thorn').hidden = false;
@@ -392,5 +404,5 @@ export function fastForward1(target: StepId) {
     obj('thorn').gone = true; thorns[1].gone = true; obj('pStage').gone = true;
     S.crack = 1; S.pose = 2;
   }
-  if (passed('c1rain')) { S.boat = P_RAIN; obj('pRain').hidden = false; }
+  if (passed('c1rain')) { S.boat = P_RAIN; obj('pRain').hidden = false; S.pieces = 3; }
 }

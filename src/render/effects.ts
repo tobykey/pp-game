@@ -36,6 +36,16 @@ export function rockHit(x: number, dyn: number) {
   }
 }
 
+/**
+ * 천 조각이 (x, y)에서 돛대로 날아온다. burn이면 도중에 타 버린다 (잃은 조각).
+ * 날아오는 데 걸리는 시간(초)을 돌려준다
+ */
+export function flyPiece(x: number, y: number, burn = false) {
+  const dur = burn ? 1.1 : 1.5;
+  fx.flyers.push({ x, y, t: S.t, dur, burn });
+  return dur;
+}
+
 /** 먹 방울이 위로 튀는 스플래시 */
 export function splash(x: number, y: number, n: number, pow: number, color?: string) {
   const acc = color ?? MODES[S.mode].accent;

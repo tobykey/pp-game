@@ -1,6 +1,6 @@
 // 오른손: 마우스/터치 드래그가 줄을 가로지르는 순간을 잡아 튕긴다.
 // 한 방향으로 줄을 3개 이상 긁으면 '스트로크' 한 번 (= 노 한 번, 코드 한 번)
-import { onPluck, onStroke } from '../story/director';
+import { onPluck, onStroke, onSweep } from '../story/director';
 import { pluck, dynFrom } from '../world/strum';
 import { S } from '../world/state';
 import { stringY, sx0, sx1 } from '../world/geometry';
@@ -13,7 +13,7 @@ interface Ptr {
   /** 줄마다 마지막으로 튕긴 시각 (너무 빠른 중복 방지) */
   last: Record<number, number>;
   /** 지금 같은 방향으로 이어서 긁은 줄 수와 그 세기 합 */
-  run: { dir: number; n: number; dyn: number; sent: boolean };
+  run: { dir: number; n: number; dyn: number; sent: boolean; t0: number };
 }
 
 let ptr: Ptr | null = null;
@@ -26,7 +26,10 @@ function hit(i: number, dyn: number, dir: number, x: number) {
   const r = ptr.run;
   // 방향이 바뀌면 새 스트로크 시작 (손을 떼지 않고 위아래로 긁어도 매번 한 번씩)
   if (r.dir !== dir) { r.dir = dir; r.n = 0; r.dyn = 0; r.sent = false; }
+  if (r.n === 0) r.t0 = performance.now();
   r.n++; r.dyn += dyn;
+  // 여섯 줄을 한 방향으로 다 긁었을 때: 얼마나 천천히 긁었는지 (피크 스크래치)
+  if (r.n === 6) onSweep({ dir, dur: (performance.now() - r.t0) / 1000 });
   if (r.n >= 3 && !r.sent) {
     r.sent = true;
     onStroke({ dir, dyn: r.dyn / r.n, chord: S.chord, x: ptr.x });
@@ -39,7 +42,7 @@ export function bindPointer(cv: HTMLCanvasElement) {
     cv.setPointerCapture(e.pointerId);
     // 누르고 긁는 동안에만 피크를 쥔다
     cv.style.cursor = PICK_CURSOR;
-    ptr = { x: e.clientX, y: e.clientY, t: performance.now(), v: 0, last: {}, run: { dir: 0, n: 0, dyn: 0, sent: false } };
+    ptr = { x: e.clientX, y: e.clientY, t: performance.now(), v: 0, last: {}, run: { dir: 0, n: 0, dyn: 0, sent: false, t0: 0 } };
     // 줄 바로 위를 누르면 그 줄 하나를 튕긴다
     for (let i = 0; i < 6; i++) {
       if (Math.abs(e.clientY - stringY(i)) < 7 && inSpan(e.clientX)) {

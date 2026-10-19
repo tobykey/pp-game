@@ -54,6 +54,18 @@ export function snap(t: number) {
   hiss(t, 'highpass', 5000, 0.08, 0.35);
 }
 
+/** 피크 스크래치: 줄을 피크로 길게 긁어 내리는 소리 (높은 잡음이 아래로 미끄러진다) */
+export function scratch(t: number, dur = 0.7) {
+  const o = audioOut(); if (!o) return;
+  const { ac, out } = o;
+  const s = ac.createBufferSource(), bq = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noise(ac); bq.type = 'bandpass'; bq.Q.value = 6;
+  bq.frequency.setValueAtTime(4200, t); bq.frequency.exponentialRampToValueAtTime(260, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(bq); bq.connect(g); g.connect(out);
+  s.start(t); s.stop(t + dur + 0.05);
+}
+
 /** 베이스 한 음 (8분음표 길이) */
 export function bass(t: number, midi: number, dur: number, v = 1) {
   const o = audioOut(); if (!o) return;

@@ -48,6 +48,8 @@ let barChord: ((bar: number) => ChordId | null) | null = null;
 export function setBarChord(fn: typeof barChord) { barChord = fn; }
 /** 그루브 시작 후 몇 번째 박인지 */
 export const grooveBeat = (b: number) => b - groove0;
+/** 그루브 시작 후 지금이 몇 번째 박인지 (소수, 화면 그리기용) */
+export const grooveBeatPos = () => beatPos() - groove0;
 
 /**
  * 매 프레임 호출. 16분음표 단위로 조금 앞을 내다보며 소리를 예약하고,
@@ -89,6 +91,15 @@ function playStep(i: number, at: number, step: number) {
       if (sub === 2 && (inBar === 1 || inBar === 2)) kick(at, 0.75);
       if (sub === 0 && (inBar === 1 || inBar === 3)) snare(at, 0.85);
       if (sub % 2 === 0) { const c = barChord?.(bar) ?? S.chord; bass(at, c === 'Fm' ? 29 : ROOT[c], step * 2, 1.1); }
+      break;
+    }
+    case 'pre': {
+      // 프리코러스: 16분 하이햇이 점점 고조, 스네어 2·4박, 엇박 섞인 킥, 엇박 베이스
+      hat(at, sub === 0 ? 0.6 : 0.35 + 0.1 * Math.min(1, bar / 5));
+      if (sub === 0 && (inBar === 0 || inBar === 2)) kick(at);
+      if (sub === 3 && inBar === 1) kick(at, 0.7);
+      if (sub === 0 && (inBar === 1 || inBar === 3)) snare(at, 0.9);
+      if (sub === 0 || sub === 3) bass(at, ROOT[barChord?.(bar) ?? S.forced ?? S.chord], step * (sub === 0 ? 2 : 1));
       break;
     }
     case 'chorus': {

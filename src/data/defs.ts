@@ -10,10 +10,10 @@ export interface StepDef<I extends string = string> {
   mode: ModeId;
 }
 
-export type ObjKind = 'isle' | 'lamp' | 'refl' | 'whisper' | 'rock' | 'painting' | 'buoy' | 'thorn';
+export type ObjKind = 'isle' | 'lamp' | 'refl' | 'whisper' | 'rock' | 'painting' | 'buoy' | 'thorn' | 'column';
 
 /** 기억 그림의 장면 */
-export type PaintingScene = 'room' | 'stage' | 'rain';
+export type PaintingScene = 'room' | 'stage' | 'rain' | 'meet';
 
 export interface ObjDef {
   id: string;
@@ -38,4 +38,6 @@ export interface ObjDef {
   scene?: PaintingScene;
   w?: number;
   edge?: 'left' | 'right';
+  /** 빗방울 기둥이 들려주는 코드 순서 */
+  seq?: ChordId[];
 }
