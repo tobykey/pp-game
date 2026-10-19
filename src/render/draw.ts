@@ -7,9 +7,9 @@ import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0
 import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn, drawThornGlow } from './chapter1Art';
 import { figure } from './figure';
 import { clamp, lerp, rand } from '../util/math';
-import { beatPos } from '../world/rhythm';
+import { beatPos, spb } from '../world/rhythm';
 import { backdrop, ctx } from './canvas';
-import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT } from './palette';
+import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 
 /** 그 사람의 색. 띠와 천 조각이 같은 색이어야 한다 (복선 7) */
 const PINK = '#ff2a7f';
@@ -107,6 +107,17 @@ export function draw() {
     ctx.globalCompositeOperation = white ? 'source-over' : 'multiply'; ctx.globalAlpha = S.flash * 0.75; ctx.fillStyle = white ? PAPER : S.flashCol;
     ctx.fillRect(-40, -40, W + 80, H + 80);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+  // 박이 울릴 때 화면 가장자리가 은은하게 조여 든다 (심장 박동을 몸으로 느끼게)
+  // 한순간에 확 어두워지지 않게, 박에서 0.06초에 걸쳐 스며들었다가 천천히 풀린다 (광과민성 배려)
+  if (S.started && S.groove !== 'none') {
+    const since = (((beatPos() % 1) + 1) % 1) * spb();
+    const env = since < 0.06 ? since / 0.06 : Math.exp(-(since - 0.06) * 4);
+    if (env > 0.01) {
+      const g = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.45, Math.max(W, H) * 0.75);
+      g.addColorStop(0, 'rgba(20,18,15,0)'); g.addColorStop(1, 'rgba(20,18,15,1)');
+      ctx.globalAlpha = (reduceMotion ? 0.04 : 0.11) * env; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+    }
   }
   drawScore(acc);
   drawDyn(acc);
@@ -354,6 +365,11 @@ function drawStrings(acc: string) {
   ctx.fillStyle = 'rgba(23,20,15,.045)'; ctx.fillRect(0, top, W, H - top);
   // 기타 침묵(1절)에는 줄이 흐려진다
   const base = S.stringsVis * (1 - 0.55 * S.hush);
+  if (S.groove !== 'none' && S.pulse > 0.02) {
+    ctx.strokeStyle = S.groove === 'heart' ? INK : acc; ctx.lineCap = 'round'; ctx.globalAlpha = 0.55 * S.pulse * base; ctx.lineWidth = 3 + 7 * S.pulse; ctx.beginPath();
+    for (let x = 0; x <= W; x += 12) ctx.lineTo(x, top + Math.sin(x * 0.04) * 1.2 + Math.sin(x * 0.13) * 0.6);
+    ctx.stroke();
+  }
   ctx.strokeStyle = INK; ctx.lineCap = 'round'; ctx.globalAlpha = 0.75 * base; ctx.lineWidth = 3; ctx.beginPath();
   for (let x = 0; x <= W; x += 12) ctx.lineTo(x, top + Math.sin(x * 0.04) * 1.2 + Math.sin(x * 0.13) * 0.6);
   ctx.stroke(); ctx.globalAlpha = base;
@@ -395,7 +411,7 @@ function drawStrings(acc: string) {
 }
 
 function drawScore(acc: string) {
-  const sx = Math.max(16, view.W * 0.03), sy = sb() - 34, pop = 1 + S.seal * 0.35, c = CHORDS[S.chord];
+  const sx = Math.max(16, view.W * 0.03), sy = sb() - 34, pop = 1 + S.seal * 0.35 + (S.groove !== 'none' ? 0.12 * S.pulse : 0), c = CHORDS[S.chord];
   // chord seal
   ctx.save(); ctx.translate(sx + 30, sy + 30); ctx.rotate(-0.06); ctx.scale(pop, pop);
   if (S.chord === 'open') {
@@ -431,7 +447,22 @@ function drawScore(acc: string) {
   const left = thorns.filter(t => !t.gone).length;
   ctx.globalAlpha = 0.65; ctx.fillStyle = INK; ctx.font = `10px ${MONO}`; ctx.textAlign = 'left';
   ctx.fillText(left ? `가시 ${left}` : '가시 없음', kx + w + 8, ky + gap * 2.6); ctx.globalAlpha = 1;
+  drawHeart(kx + w + 66, ky + gap * 1.6, acc);
   drawBeatGuide(sx + 30, sy + 30, acc);
+}
+
+/** 먹 심장. 심장 소리처럼 박에 한 번(쿵), 바로 뒤에 한 번 더(쿵) 뛴다. 드럼 구간에선 박마다 한 번 */
+function drawHeart(x: number, y: number, acc: string) {
+  if (S.groove === 'none' || S.stringsVis < 0.5) return;
+  const since = (((beatPos() % 1) + 1) % 1) * spb();
+  const lub = S.pulse, dub = S.groove === 'heart' ? Math.max(0, 1 - Math.abs(since - 0.17) / 0.09) : 0;
+  const k = 1.35 * (1 + 0.45 * lub + 0.25 * dub);
+  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+  ctx.globalAlpha = 0.45 + 0.55 * Math.max(lub, dub * 0.8); ctx.fillStyle = S.groove === 'heart' ? INK : acc;
+  ctx.beginPath(); ctx.moveTo(0, 8);
+  ctx.bezierCurveTo(-11, 0, -10, -10, -5, -10); ctx.bezierCurveTo(-2, -10, 0, -7, 0, -5);
+  ctx.bezierCurveTo(0, -7, 2, -10, 5, -10); ctx.bezierCurveTo(10, -10, 11, 0, 0, 8); ctx.fill();
+  ctx.restore(); ctx.globalAlpha = 1;
 }
 
 /**
@@ -441,12 +472,12 @@ function drawScore(acc: string) {
 function drawBeatGuide(cx: number, cy: number, acc: string) {
   if (S.groove !== 'none' && S.stringsVis > 0.5) {
     const ph = ((beatPos() % 1) + 1) % 1;
-    const r = 42 + 46 * (1 - ph);
-    ctx.save(); ctx.strokeStyle = S.groove === 'heart' ? INK : acc; ctx.lineWidth = 2 + 2 * ph;
-    ctx.globalAlpha = 0.12 + 0.5 * ph * ph;
+    const r = 44 + 70 * (1 - ph);
+    ctx.save(); ctx.strokeStyle = S.groove === 'heart' ? INK : acc; ctx.lineWidth = 3 + 3 * ph;
+    ctx.globalAlpha = 0.2 + 0.7 * ph * ph;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
     // 박이 울린 순간: 도장 테두리가 번진다
-    if (S.pulse > 0.05) { ctx.globalAlpha = 0.5 * S.pulse; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, 42 + 6 * (1 - S.pulse), 0, Math.PI * 2); ctx.stroke(); }
+    if (S.pulse > 0.05) { ctx.globalAlpha = 0.85 * S.pulse; ctx.lineWidth = 5 * S.pulse + 1; ctx.beginPath(); ctx.arc(cx, cy, 42 + 14 * (1 - S.pulse), 0, Math.PI * 2); ctx.stroke(); }
     ctx.restore();
   }
   // 다음에 칠 코드
