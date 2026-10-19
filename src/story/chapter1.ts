@@ -1,7 +1,6 @@
 // 챕터 1 '고집의 섬' 장면 진행 (문구·배치는 data/chapter1.ts, 시나리오는 docs/scenario-ch0-1.md 챕터 1)
 // 간주: 기타가 가장 크게 우는 마지막 구간 → 섬에 닿는 순간 줄이 끊어짐 → 1절: 베이스로 탐색
 import { CHORDS, type ChordId } from '../data/chords';
-import { BEAT_WINDOW } from '../data/chapter0';
 import {
   C1_START, INTERLUDE_BARS, P_RAIN, P_ROOM, P_STAGE, RAIN_BARS, ROOM_SEQ, SNAP_AT, STAGE_BARS, STAGE_SEQ, TEXT1,
 } from '../data/chapter1';
@@ -11,9 +10,10 @@ import { snap } from '../audio/kit';
 import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
-import { banner, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
+import { banner, chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
 import { pos, stringY, toScreenX } from '../world/geometry';
-import { grooveBeat, nearestBeat, setBarChord, setTempo, spb } from '../world/rhythm';
+import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
+import { judgeBeat } from '../world/judge';
 import { row } from '../world/rowing';
 import { OBJ, S, fx, obj, str, thorns, view, type WorldObj } from '../world/state';
 import { bassStroke } from '../world/strum';
@@ -31,7 +31,7 @@ let pending: { at: number; to: StepId } | null = null;
 function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
 let currentEl = 0;
 
-const onBeat = () => Math.abs(nearestBeat().off) <= Math.min(BEAT_WINDOW, spb() * 0.28);
+const onBeat = () => judgeBeat().j !== 'miss';
 
 /** 1절 동안: 스트로크는 늘 베이스를 울린다 (줄이 끊어져 기타 소리 대신) */
 function verseStroke(s: Stroke) { if (S.silence) bassStroke(s.chord, s.x); }
@@ -58,11 +58,12 @@ function buoyPuzzle(seq: ChordId[], buoys: () => WorldObj[]) {
       if (chord === seq[k]) {
         if (!onBeat()) { ink(TEXT1.onBeat); return; }
         b.lit = 1; k++;
+        S.nextChord = seq[k] ?? null;
         const p = pos(b);
         splash(p.x, p.y - 10, 10, 0.4, INK);
         setProgress(TEXT1.progressBuoys(k, seq.length));
       } else if (k > 0 && !b.lit) {
-        k = 0; buoys().forEach(o => o.lit = 0);
+        k = 0; S.nextChord = seq[0]; buoys().forEach(o => o.lit = 0);
         setProgress(TEXT1.progressBuoys(0, seq.length));
         banner(TEXT1.orderBroken, 'soft', 1400);
       }
@@ -76,6 +77,7 @@ const sail: StepHandler = {
   enter() {
     arrived = false;
     S.lookable = true;
+    chapterCard('CHAPTER 1', '고집의 섬', '간주 · 1절');
     setTempo(130, 'chorus');
     setBarChord(bar => INTERLUDE_BARS[bar % INTERLUDE_BARS.length]);
     unlock(['Db', 'Eb', 'Cm', 'F', 'Fsus4']);
@@ -87,12 +89,13 @@ const sail: StepHandler = {
     if (arrived) { go('c1snap'); return; }
     const bar = Math.floor(gb / 4), c = INTERLUDE_BARS[bar % INTERLUDE_BARS.length];
     S.forced = c; resolveChord();
+    S.nextChord = INTERLUDE_BARS[(bar + 1) % INTERLUDE_BARS.length];
     setProgress(CHORDS[c].label);
     if (c === 'F') { S.flash = Math.max(S.flash, reduceMotion ? 0.05 : 0.18); S.flashCol = PINK; }
   },
   update(_dt, el) {
     S.vel = Math.min(S.vel, 0.17);
-    once('look', el > 3, () => ink(TEXT1.lookHint));
+    once('look', el > 4, () => ink(TEXT1.lookHint));
     once('lookOff', el > 9, () => ink(null));
     // 먹 바위가 길을 막는다
     S.rockGuide = null;
@@ -117,7 +120,6 @@ const sail: StepHandler = {
         splash(p.x, p.y, 34, 1, INK);
         for (let j = 0; j < 12; j++) fx.lines.push({ x: p.x, y: p.y, a: rand(-Math.PI, 0), l: rand(60, 180), life: 1, c: j % 3 ? VOLT : INK });
         ink(null);
-        banner(TEXT1.rockBroken, 'soft', 900);
         S.rockGuide = null;
       }
     }
@@ -127,7 +129,7 @@ const sail: StepHandler = {
 // ---------- 줄이 끊어짐 ----------
 const snapStep: StepHandler = {
   enter() {
-    S.forced = null; resolveChord(); setBarChord(null);
+    S.forced = null; S.nextChord = null; resolveChord(); setBarChord(null);
     setTempo(65, 'none'); // 음악이 뚝 끊긴다
     const o = audioOut(); if (o) snap(o.ac.currentTime + 0.02);
     for (let i = 0; i < 6; i++) splash(view.W * rand(0.3, 0.7), stringY(i), 3, 0.35, INK);
@@ -153,6 +155,7 @@ const room: StepHandler = {
     setTempo(65, 'verse');
     setBarChord(bar => ROOM_SEQ[bar % 4]);
     roomBuoys().forEach(o => { o.hidden = false; o.lit = 0; });
+    S.nextChord = ROOM_SEQ[0];
     setProgress(TEXT1.progressBuoys(0, 4));
     S.cruise = 0;
     ink(TEXT1.bassHint);
@@ -190,6 +193,7 @@ const stage: StepHandler = {
         setObjective(TEXT1.stagePuzzle);
         setProgress(TEXT1.progressBuoys(0, 2));
         stageBuoys().forEach(o => { o.hidden = false; o.lit = 0; });
+        S.nextChord = STAGE_SEQ[0];
         obj('thorn').hidden = false;
       }
       return;
@@ -245,6 +249,7 @@ const thornStep: StepHandler = {
         S.dimT = 0.55;
         setObjective(TEXT1.pull); setProgress('');
         cue(TEXT1.pullCue, 'rock', 'C');
+        S.nextChord = 'C';
         ink(TEXT1.pullHint);
         if (!reduceMotion) S.shake = Math.max(S.shake, 6);
       }
@@ -260,7 +265,7 @@ function pullThorn() {
   const t = obj('thorn'), tp = pos(t);
   t.gone = true;
   cue(null); ink(null); setProgress(''); setObjective('');
-  S.dimT = 0; S.vortexT = 0;
+  S.dimT = 0; S.vortexT = 0; S.nextChord = null;
   // 음악이 뚝 끊긴다 → 한 박 뒤, 딱 한 번 기타가 C 화음으로 터진다 (복선: 가시를 받아 삼킨 그 사람의 소리)
   setTempo(65, 'none');
   const prevMode = S.mode;
@@ -299,6 +304,7 @@ const rain: StepHandler = {
     obj('pRain').hidden = false;
     setProgress(TEXT1.progressRain(CHORDS[RAIN_BARS[0]].label, 0));
     cue(CHORDS[RAIN_BARS[0]].label, 'soft', RAIN_BARS[0]);
+    S.nextChord = RAIN_BARS[1];
   },
   beat(n) {
     if (rainDone) return;
@@ -309,7 +315,7 @@ const rain: StepHandler = {
       rainTarget += (P_RAIN - P_STAGE) / RAIN_BARS.length;
       if (rk >= RAIN_BARS.length) {
         // 마지막 Fm Fm: 해결되지 않은 채 음악이 멈춘다
-        rainDone = true; setTempo(65, 'none'); setProgress(''); cue(null);
+        rainDone = true; setTempo(65, 'none'); setProgress(''); cue(null); S.nextChord = null;
         goLater('c1after', currentEl, 1.5);
         return;
       }
@@ -320,6 +326,7 @@ const rain: StepHandler = {
     }
     setProgress(TEXT1.progressRain(CHORDS[RAIN_BARS[rk]].label, rk));
     cue(CHORDS[RAIN_BARS[rk]].label, 'soft', RAIN_BARS[rk]);
+    S.nextChord = RAIN_BARS[rk + 1] ?? null;
   },
   update() {
     S.cruise = 0;

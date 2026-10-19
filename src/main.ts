@@ -1,6 +1,6 @@
 // 시작점: 모듈을 연결하고 게임 루프를 돌린다
 import './style.css';
-import { initAudio, setGuitarVolume } from './audio/engine';
+import { initAudio } from './audio/engine';
 import { STEPS, STEP_NAMES, type StepId } from './data/steps';
 import { bindKeyboard } from './input/keyboard';
 import { bindPointer } from './input/pointer';
@@ -12,6 +12,7 @@ import { fastForward0 } from './story/chapter0';
 import { fastForward1 } from './story/chapter1';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
+import { initMenu } from './ui/menu';
 import { nearestBeat, setTempo } from './world/rhythm';
 import { OBJ, S, thorns } from './world/state';
 import { update } from './world/update';
@@ -19,28 +20,20 @@ import { update } from './world/update';
 initHud({ onChip: toggleSticky, onMode: setMode, onReset: () => { location.href = location.pathname; } });
 bindPointer(cv);
 bindKeyboard();
+initMenu();
 
 let last = performance.now();
 function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000); // 탭을 오래 비워도 한 프레임이 너무 크게 튀지 않게
   last = now;
-  update(dt);
+  // 메뉴가 열려 있으면 세상이 멈춘다 (그림은 그대로)
+  if (!S.paused) update(dt);
   draw();
   requestAnimationFrame(frame);
 }
 addEventListener('resize', resize);
 resize(); updateChips(); requestAnimationFrame(frame);
 document.fonts?.load(`30px "Nanum Brush Script"`).catch(() => {});
-
-// 6현 음량 게이지 (브라우저에 기억)
-const vol = document.querySelector<HTMLInputElement>('#vol')!;
-try { const v = localStorage.getItem('pp.guitarVol'); if (v != null) vol.value = v; } catch { /* 무시 */ }
-const applyVol = () => {
-  setGuitarVolume(+vol.value / 100);
-  try { localStorage.setItem('pp.guitarVol', vol.value); } catch { /* 무시 */ }
-};
-vol.addEventListener('input', applyVol);
-applyVol();
 
 // 시작 화면: 처음부터 / 이어서 / 장면 바로 가기
 const jump = document.querySelector<HTMLSelectElement>('#jump')!;

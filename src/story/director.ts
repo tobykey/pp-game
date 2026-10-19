@@ -1,9 +1,9 @@
 // 장면 진행 관리: 지금 장면에 입력(줄 튕김·스트로크·박)을 전달하고, 장면을 바꾸고, 진행을 저장한다
 import type { ChordId } from '../data/chords';
-import { STEPS, type StepId } from '../data/steps';
+import { STEPS, before, type StepId } from '../data/steps';
 import { setTempo } from '../world/rhythm';
 import { S } from '../world/state';
-import { setMode, setObjective, setProgress } from '../ui/hud';
+import { fadeHelp, setMode, setObjective, setProgress } from '../ui/hud';
 
 export interface Stroke {
   /** 1 다운, -1 업 */
@@ -43,6 +43,9 @@ export function go(id: StepId) {
   setObjective(def.objective);
   setProgress('');
   save(id);
+  S.nextChord = null;
+  // 기본 조작을 다 배운 뒤(등불 찾기부터)에는 아래 조작 안내 줄이 사라진다
+  if (!before(id, 'lamps')) fadeHelp();
   cur = handlers[id];
   cur.enter?.();
 }

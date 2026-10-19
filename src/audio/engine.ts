@@ -11,6 +11,16 @@ let kitBus: GainNode;
 /** 소리가 준비됐으면 오디오 컨텍스트와 드럼 출력을 돌려준다 */
 export function audioOut() { return AC ? { ac: AC, out: kitBus } : null; }
 
+/** 전체 음량 0~1 */
+let masterVol = 0.85, masterGain: GainNode | null = null;
+export function setMasterVolume(v: number) {
+  masterVol = v;
+  if (AC && masterGain) masterGain.gain.setTargetAtTime(v, AC.currentTime, 0.03);
+}
+/** 일시정지: 소리를 통째로 멈췄다가 이어 간다 */
+export function suspendAudio() { AC?.suspend(); }
+export function resumeAudio() { AC?.resume(); }
+
 /** 6현(기타) 음량 0~1. 심장·드럼·베이스와 따로 조절한다 */
 let guitarVol = 0.45;
 export function setGuitarVolume(v: number) {
@@ -25,7 +35,7 @@ export function initAudio() {
   const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ac = AC = new Ctor();
   const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
-  const master = ac.createGain(); master.gain.value = 0.85; comp.connect(master); master.connect(ac.destination);
+  const master = masterGain = ac.createGain(); master.gain.value = masterVol; comp.connect(master); master.connect(ac.destination);
   const rev = ac.createConvolver(); rev.buffer = impulse(ac, 3, 2.6);
   const rg = ac.createGain(); rg.gain.value = 0.3; rev.connect(rg); rg.connect(comp);
   bus = ac.createGain(); bus.gain.value = guitarVol; bus.connect(comp); bus.connect(rev);

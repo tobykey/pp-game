@@ -19,15 +19,9 @@
       <span id="found"></span>
     </div>
     <div class="right">
-      <div class="modes" role="group" aria-label="편곡 음색">
-        <button data-mode="rock" aria-pressed="true"><small>1</small>락</button>
-        <button data-mode="acoustic" aria-pressed="false"><small>2</small>어쿠스틱</button>
-        <button data-mode="strings" aria-pressed="false"><small>3</small>현악</button>
-        <button data-mode="korean" aria-pressed="false"><small>4</small>국악</button>
-      </div>
       <label class="vol" title="6현 소리 크기 (심장·드럼·베이스는 그대로)"><span>6현</span>
         <input type="range" id="vol" min="0" max="100" step="1" value="45" aria-label="6현 소리 크기"></label>
-      <button class="reset" id="reset">처음부터</button>
+      <button class="menuBtn" id="menuBtn" aria-haspopup="dialog">메뉴 <small>Esc</small></button>
     </div>
   </div>
   <div class="chips" id="chips"></div>
@@ -37,6 +31,46 @@
 <div class="banner" id="banner"></div>
 <div class="ink" id="ink" aria-live="polite"></div>
 <div class="cue" id="cue" aria-live="assertive"></div>
+<div class="ccard" id="ccard" aria-live="polite"></div>
+
+<div class="menu" id="menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle" hidden>
+  <div class="mcard">
+    <h2 id="menuTitle">잠시 멈춤</h2>
+    <button class="go" id="resume">계속하기</button>
+    <section>
+      <h3>소리</h3>
+      <label class="mrow">전체 음량 <input type="range" id="mvol" min="0" max="100" step="1" value="85"></label>
+      <label class="mrow">6현 음량 <input type="range" id="gvol" min="0" max="100" step="1" value="45"></label>
+      <div class="mrow">음색
+        <div class="modes" role="group" aria-label="편곡 음색">
+          <button data-mode="rock" aria-pressed="true"><small>1</small>락</button>
+          <button data-mode="acoustic" aria-pressed="false"><small>2</small>어쿠스틱</button>
+          <button data-mode="strings" aria-pressed="false"><small>3</small>현악</button>
+          <button data-mode="korean" aria-pressed="false"><small>4</small>국악</button>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h3>박 보정</h3>
+      <label class="mrow"><input type="range" id="offset" min="-120" max="120" step="5" value="0"> <output id="offsetOut">0 ms</output></label>
+      <p class="mnote">박에 맞춰 쳤는데 자꾸 놓침이 나오면 조절하세요. 소리보다 늦게 쳐야 맞는 느낌이면 +, 일찍 쳐야 맞는 느낌이면 −</p>
+    </section>
+    <section>
+      <h3>편의</h3>
+      <label class="mrow"><input type="checkbox" id="calm"> 흔들림·섬광 줄이기 (빛에 민감하다면 켜 주세요)</label>
+      <label class="mrow"><input type="checkbox" id="showHelp"> 아래 조작 안내 늘 보이기</label>
+    </section>
+    <section>
+      <h3>조작법</h3>
+      <p class="mnote"><b>왼손</b> 키를 함께 눌러 코드 · <b>오른손</b> 줄 위를 드래그 (아래로 = 왼쪽 노, 위로 = 오른쪽 노) · 빠를수록 세게 · <b>Shift</b> 팜뮤트 · <b>← →</b> 둘러보기 · <b>Esc</b> 메뉴</p>
+    </section>
+    <section class="mrowWrap">
+      <label class="mrow">장면 고르기 <select id="menuJump"></select></label>
+      <button class="cont" id="menuGo">그 장면으로</button>
+      <button class="cont danger" id="reset">처음부터</button>
+    </section>
+  </div>
+</div>
 
 <div class="start" id="start">
   <div class="card">

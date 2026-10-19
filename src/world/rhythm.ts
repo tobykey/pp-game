@@ -36,7 +36,7 @@ function latency() {
 
 /** 가장 가까운 박과 그 박에서 몇 초 벗어났는지 (출력 지연 보정) */
 export function nearestBeat(t = now()) {
-  const b = beatPos(t - latency()), n = Math.round(b);
+  const b = beatPos(t - latency() - S.offset), n = Math.round(b);
   return { n, off: (b - n) * spb() };
 }
 

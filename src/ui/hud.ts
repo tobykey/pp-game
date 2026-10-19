@@ -24,7 +24,14 @@ export function initHud(h: HudHandlers) {
     if (b) h.onChip(b.dataset.ch as ChordId);
   });
   document.querySelectorAll<HTMLElement>('.modes button').forEach(b => b.addEventListener('click', () => h.onMode(b.dataset.mode as ModeId)));
-  $('#reset').addEventListener('click', h.onReset);
+  // 처음부터: 실수로 누르지 않게 두 번 눌러야 한다
+  let armed: ReturnType<typeof setTimeout> | undefined;
+  const reset = $('#reset');
+  reset.addEventListener('click', () => {
+    if (armed) { clearTimeout(armed); h.onReset(); return; }
+    reset.textContent = '정말 처음부터? 한 번 더 누르세요';
+    armed = setTimeout(() => { armed = undefined; reset.textContent = '처음부터'; }, 3000);
+  });
 }
 
 /** 운지표에 코드 칩을 연다 */
@@ -78,8 +85,36 @@ export function setMode(m: ModeId) {
   document.documentElement.style.setProperty('--accent', MODES[m].accent);
 }
 
-export function setObjective(txt: string) { $('#objText').textContent = txt; }
+/** 목표 문구는 바뀔 때만 진하게 보이고, 6초 뒤 옅어진다 */
+let quietT: ReturnType<typeof setTimeout> | undefined;
+function freshObjective() {
+  const o = document.querySelector('.obj')!;
+  o.classList.remove('quiet');
+  clearTimeout(quietT);
+  quietT = setTimeout(() => o.classList.add('quiet'), 6000);
+}
+export function setObjective(txt: string) {
+  const el = $('#objText');
+  if (el.textContent !== txt) { el.textContent = txt; if (txt) freshObjective(); }
+}
 export function setProgress(txt: string) { $('#found').textContent = txt; }
+
+/** 아래 조작 안내 줄: 처음에만 보이다가 사라진다 (메뉴에서 늘 보이게 할 수 있음) */
+let helpPinned = false;
+export function setHelpPinned(v: boolean) { helpPinned = v; $('#hint').classList.toggle('gone', !v && helpFaded); }
+let helpFaded = false;
+export function fadeHelp() { helpFaded = true; if (!helpPinned) $('#hint').classList.add('gone'); }
+
+/** 장이 시작될 때의 제목 카드 */
+let cardT: ReturnType<typeof setTimeout> | undefined;
+export function chapterCard(num: string, title: string, sub: string) {
+  const el = $('#ccard');
+  el.innerHTML = `<b>${num}</b><h2>${title}</h2><p>${sub}</p>`;
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(cardT);
+  cardT = setTimeout(() => el.classList.remove('show'), 3400);
+}
 
 let bt: ReturnType<typeof setTimeout> | undefined;
 export function banner(txt: string, kind: 'soft' | 'rock', ms: number) {

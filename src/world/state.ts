@@ -97,6 +97,14 @@ export const S = {
   dim: 0, dimT: 0,
   /** 길을 막은 바위 (그 자리를 점선으로 안내) */
   rockGuide: null as string | null,
+
+  // 화면 안내
+  /** 다음에 칠 코드 (코드 도장 위에 미리보기) */
+  nextChord: null as ChordId | null,
+  /** 일시정지 */
+  paused: false,
+  /** 박 보정 (초). 메뉴에서 조절. +면 늦게 쳐도 맞음 */
+  offset: 0,
   /** 그 사람의 자세 (0 손을 내 쪽으로 뻗음, 1 가슴에 손, 2 기타 쪽으로). 내가 보지 않을 때 바뀐다 */
   pose: 0,
   /** 그 사람의 손목에 간 금 */
@@ -114,9 +122,11 @@ export const str: StringState[] = [...Array(6)].map(() => ({ amp: 0, ph: 0, hot:
 export interface Ripple { wx: number; y: number; r: number; max: number; sp: number; dyn: number; t: number; acc: string }
 export interface Particle { x: number; y: number; vx: number; vy: number; r: number; life: number; dec: number; c: string }
 export interface SpeedLine { x: number; y: number; a: number; l: number; life: number; c: string }
+/** 박 판정 먹 도장 */
+export interface Mark { kind: 'perfect' | 'good' | 'miss'; t: number }
 
 /** 파동 · 먹 방울 · 집중선 */
-export const fx = { rip: [] as Ripple[], parts: [] as Particle[], lines: [] as SpeedLine[] };
+export const fx = { rip: [] as Ripple[], parts: [] as Particle[], lines: [] as SpeedLine[], marks: [] as Mark[] };
 
 /** 조표의 플랫 넷 = 심장의 가시 넷. p는 오선 위 높이. 챕터 0에서는 하나도 빠지지 않는다 */
 export interface Thorn { n: string; p: number; gone: boolean; fly: { t: number; vx: number; vy: number; rot: number; toBow?: boolean } | null }

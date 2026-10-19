@@ -35,7 +35,7 @@ function hit(i: number, dyn: number, dir: number, x: number) {
 
 export function bindPointer(cv: HTMLCanvasElement) {
   cv.addEventListener('pointerdown', e => {
-    if (!S.started || S.stringsVis < 0.3) return;
+    if (!S.started || S.paused || S.stringsVis < 0.3) return;
     cv.setPointerCapture(e.pointerId);
     // 누르고 긁는 동안에만 피크를 쥔다
     cv.style.cursor = PICK_CURSOR;

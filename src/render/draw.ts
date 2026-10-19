@@ -7,6 +7,7 @@ import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0
 import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn, drawThornGlow } from './chapter1Art';
 import { figure } from './figure';
 import { clamp, lerp, rand } from '../util/math';
+import { beatPos } from '../world/rhythm';
 import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT } from './palette';
 
@@ -430,15 +431,52 @@ function drawScore(acc: string) {
   const left = thorns.filter(t => !t.gone).length;
   ctx.globalAlpha = 0.65; ctx.fillStyle = INK; ctx.font = `10px ${MONO}`; ctx.textAlign = 'left';
   ctx.fillText(left ? `가시 ${left}` : '가시 없음', kx + w + 8, ky + gap * 2.6); ctx.globalAlpha = 1;
-  // 박 표시: 박이 울릴 때마다 먹 점이 번진다
-  if (S.groove !== 'none') {
-    const px = kx + w + 70, py = ky + gap * 2;
-    ctx.globalAlpha = 0.25 + 0.6 * S.pulse; ctx.fillStyle = S.groove === 'heart' ? INK : acc;
-    ctx.beginPath(); ctx.arc(px, py, 5 + 5 * S.pulse, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 0.35 * S.pulse; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(px, py, 10 + 14 * (1 - S.pulse), 0, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = 1;
+  drawBeatGuide(sx + 30, sy + 30, acc);
+}
+
+/**
+ * 코드 도장 둘레의 박 안내 (리듬 게임의 '접근 원'):
+ * 원이 줄어들다가 박에 딱 맞춰 도장 테두리에 닿는다. 그 위엔 다음에 칠 코드, 옆엔 판정 먹 도장
+ */
+function drawBeatGuide(cx: number, cy: number, acc: string) {
+  if (S.groove !== 'none' && S.stringsVis > 0.5) {
+    const ph = ((beatPos() % 1) + 1) % 1;
+    const r = 42 + 46 * (1 - ph);
+    ctx.save(); ctx.strokeStyle = S.groove === 'heart' ? INK : acc; ctx.lineWidth = 2 + 2 * ph;
+    ctx.globalAlpha = 0.12 + 0.5 * ph * ph;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    // 박이 울린 순간: 도장 테두리가 번진다
+    if (S.pulse > 0.05) { ctx.globalAlpha = 0.5 * S.pulse; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, cy, 42 + 6 * (1 - S.pulse), 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
   }
+  // 다음에 칠 코드
+  if (S.nextChord) {
+    const lab = CHORDS[S.nextChord].label, y = cy - 64;
+    ctx.save(); ctx.translate(cx, y); ctx.rotate(-0.04);
+    ctx.globalAlpha = 0.85; ctx.fillStyle = PAPER; ctx.strokeStyle = INK; ctx.lineWidth = 1.5;
+    ctx.fillRect(-26, -15, 52, 30); ctx.strokeRect(-26, -15, 52, 30);
+    ctx.fillStyle = INK; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${lab.length > 3 ? 15 : 20}px ${BRUSH}`; ctx.fillText(lab, 0, 1);
+    ctx.font = `9px ${MONO}`; ctx.globalAlpha = 0.6; ctx.fillText('다음', 0, -22);
+    ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(-5, 19); ctx.lineTo(0, 25); ctx.lineTo(5, 19); ctx.stroke();
+    ctx.restore();
+  }
+  // 판정 먹 도장: 딱 맞음 ◎, 맞음 ○, 놓침은 번진 먹
+  for (const m of fx.marks) {
+    const e = S.t - m.t;
+    if (e > 0.7) continue;
+    const a = 1 - e / 0.7, mx = cx + 58, my = cy - 30 - e * 30;
+    ctx.save(); ctx.globalAlpha = a; ctx.strokeStyle = m.kind === 'miss' ? INK_SOFT : INK; ctx.lineWidth = 2.5;
+    if (m.kind === 'miss') {
+      ctx.fillStyle = INK_SOFT; ctx.globalAlpha = a * 0.5;
+      ctx.beginPath(); ctx.ellipse(mx, my, 9, 5, 0.6, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(mx, my, 9, 0, Math.PI * 2); ctx.stroke();
+      if (m.kind === 'perfect') { ctx.strokeStyle = acc; ctx.beginPath(); ctx.arc(mx, my, 4, 0, Math.PI * 2); ctx.stroke(); }
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawDyn(acc: string) {

@@ -1,14 +1,15 @@
 // 챕터 0 '안개' 장면 진행 (문구·배치는 data/chapter0.ts, 시나리오는 docs/scenario-ch0-1.md)
 import { CHORDS, type ChordId } from '../data/chords';
 import { MODES } from '../data/modes';
-import { BEAT_WINDOW, CHORUS_BARS, CHORUS_SPEED, HOOK_SEQ, LAMP_X, ROW_DIST, TEXT } from '../data/chapter0';
+import { CHORUS_BARS, CHORUS_SPEED, HOOK_SEQ, LAMP_X, ROW_DIST, TEXT } from '../data/chapter0';
 import { before, type StepId } from '../data/steps';
 import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
-import { banner, ink, setProgress, unlock } from '../ui/hud';
+import { banner, chapterCard, ink, setProgress, unlock } from '../ui/hud';
 import { pos, boatX, boatY } from '../world/geometry';
-import { grooveBeat, nearestBeat, setBarChord, setTempo, spb } from '../world/rhythm';
+import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
+import { judgeBeat } from '../world/judge';
 import { row } from '../world/rowing';
 import { OBJ, S, cloth, fx, obj, view } from '../world/state';
 import { rand } from '../util/math';
@@ -37,6 +38,7 @@ const wake: StepHandler = {
     const t2 = el - DARK - TO_WHITE;
     S.reveal = t2 <= 0 ? 0 : Math.min(1, t2 / TO_SCENE);
     if (S.reveal > 0.6) S.stringsVis = Math.min(1, S.stringsVis + dt * 0.6);
+    once('card', el > DARK + TO_WHITE + 0.6, () => chapterCard('CHAPTER 0', '안개', '피아노 도입 · 훅 · 후렴 1'));
     once('hint', S.stringsVis >= 1 && el > 1, () => ink(TEXT.hintStrum));
   },
   pluck() { if (S.stringsVis > 0.5) { S.black = 0; S.reveal = 1; S.stringsVis = 1; go('whisper'); } },
@@ -94,6 +96,7 @@ let hp = 0;
 const hook: StepHandler = {
   enter() {
     hp = 0;
+    S.nextChord = HOOK_SEQ[0];
     setTempo(130, 'hook');
     unlock(['Db6', 'Ab']);
     setProgress(TEXT.progressHook(0));
@@ -105,11 +108,12 @@ const hook: StepHandler = {
     const expected = HOOK_SEQ[hp];
     if (s.chord === expected) {
       const lamp = obj(expected);
-      if (Math.abs(nearestBeat().off) > Math.min(BEAT_WINDOW, spb() * 0.28)) {
+      if (judgeBeat().j === 'miss') {
         lamp.res = 1; ink(TEXT.hintOnBeat);
         return;
       }
       lamp.lit++; hp++;
+      S.nextChord = HOOK_SEQ[hp] ?? null;
       const p = pos(lamp);
       splash(p.x, p.y - 20, 16, 0.6);
       S.flash = Math.max(S.flash, reduceMotion ? 0.05 : 0.1); S.flashCol = MODES[S.mode].accent;
@@ -118,7 +122,7 @@ const hook: StepHandler = {
       else banner(TEXT.hookLit(CHORDS[expected].label, hp), 'soft', 1100);
     } else if (HOOK_SEQ.includes(s.chord)) {
       obj(s.chord).res = 1;
-      if (hp > 0) { hp = 0; lamps().forEach(o => o.lit = 0); setProgress(TEXT.progressHook(0)); banner(TEXT.orderBroken, 'soft', 1500); }
+      if (hp > 0) { hp = 0; S.nextChord = HOOK_SEQ[0]; lamps().forEach(o => o.lit = 0); setProgress(TEXT.progressHook(0)); banner(TEXT.orderBroken, 'soft', 1500); }
     }
   },
 };
@@ -179,6 +183,7 @@ const chorus: StepHandler = {
     if (bar < CHORUS_BARS.length) {
       const c = CHORUS_BARS[bar];
       S.forced = c; resolveChord();
+      S.nextChord = CHORUS_BARS[bar + 1] ?? null;
       setProgress(`${CHORDS[c].label} · ${bar + 1} / ${CHORUS_BARS.length}`);
       // 마디가 바뀔 때 형광. 조성 밖의 F(= 그 사람)에서 가장 크게
       const big = c === 'F';
@@ -202,7 +207,7 @@ const chorus: StepHandler = {
 };
 function endVision() {
   chorusEnded = true;
-  S.forced = null; resolveChord();
+  S.forced = null; S.nextChord = null; resolveChord();
   setBarChord(null);
   S.flash = reduceMotion ? 0.2 : 0.45; S.flashCol = '#ffffff';
   S.visionT = 0; S.sailT = 0; S.fogT = 1; S.cruise = 0;
