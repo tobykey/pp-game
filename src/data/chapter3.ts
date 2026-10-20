@@ -24,8 +24,16 @@ export const C3_START = 15.0;
 export const CHORUS2: ChordId[] = section('chorus2').chords;
 /** 형광 폭발을 일으키는 F 마디 (0부터 셈: 8마디째, 16마디째) */
 export const F_BARS = [7, 15];
-/** 파란 파도(공명 카운터)가 덮치는 박 (그루브 시작부터). F 마디는 비워 둔다. 앞은 듬성듬성, 뒤는 촘촘히 */
-export const COUNTER_BEATS = [6, 14, 22, 34, 38, 42, 46, 50, 54, 58];
+/**
+ * 파란 빛(공명 카운터): beat 박에 받아쳐야 한다. lead 박 전에 '짠!' 하고 뱃머리 앞에 나타난다.
+ * lead 1 = 정박에 나타나 다음 정박에 받아치기. lead 0.5 = 반 박 전에 나타나 빠르게 대처 (뒤로 갈수록)
+ * F 마디는 비워 둔다. 앞은 듬성듬성, 뒤는 촘촘히
+ */
+export const COUNTERS: { beat: number; lead: number }[] = [
+  { beat: 6, lead: 1 }, { beat: 14, lead: 1 }, { beat: 22, lead: 1 },
+  { beat: 34, lead: 1 }, { beat: 38, lead: 1 }, { beat: 42, lead: 1 }, { beat: 46, lead: 1 },
+  { beat: 50, lead: 0.5 }, { beat: 54, lead: 0.5 }, { beat: 57, lead: 0.5 },
+];
 /** F의 문 앞: 이 진행을 되풀이하며 버틴다 */
 export const GATE_BARS: ChordId[] = ['Db', 'Eb', 'Fsus4', 'F'];
 
@@ -36,7 +44,9 @@ export const OBJECTS3: ObjDef[] = [
 export const TEXT3 = {
   stall: '바람을 안기엔, 돛이 모자라다',
   lyric: '노 저어 희망의 돛을 펼치네',
-  counterHint: '파랗게 물들면 · 박에 맞춰 세게!',
+  counterHint: '파란 빛이 짠! · 다음 박에 세게!',
+  glowHint: '받아칠 때마다 돛이 한 조각씩 빛난다 · 여섯이 다 빛나면 F 마디에 폭발',
+  glowFull: '돛이 다 빛났다 · F를 기다려',
   fCue: 'F!',
   fHint: '조성 밖의 F · 왼손 Q A Z',
   fGate: '지금! F로 가시를 뽑으세요',

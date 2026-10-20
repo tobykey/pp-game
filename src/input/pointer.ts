@@ -5,6 +5,7 @@ import { pluck, dynFrom } from '../world/strum';
 import { S } from '../world/state';
 import { stringY, sx0, sx1 } from '../world/geometry';
 import { BRUSH_CURSOR, PICK_CURSOR } from '../render/pick';
+import { cutActive, skipCut } from '../render/cutscene';
 
 interface Ptr {
   x: number; y: number; t: number;
@@ -89,7 +90,10 @@ export function setPickFloat(on: boolean, cv: HTMLCanvasElement) {
 export function bindPointer(cv: HTMLCanvasElement) {
   addEventListener('pointermove', e => { if (!ptr || S.pickHeld) { target.x = e.clientX; target.y = e.clientY; } });
   cv.addEventListener('pointerdown', e => {
-    if (!S.started || S.paused || S.stringsVis < 0.3) return;
+    if (!S.started || S.paused) return;
+    // 컷신 중에는 클릭이 건너뛰기
+    if (cutActive()) { skipCut(); return; }
+    if (S.stringsVis < 0.3) return;
     cv.setPointerCapture(e.pointerId);
     target.x = e.clientX; target.y = e.clientY;
     // 떠다니는 피크: 피크를 정확히 눌러야 붙잡는다. 붙잡은 뒤엔 그 피크로 줄을 긁는다

@@ -100,7 +100,10 @@ export function update(dt: number) {
   S.shield = Math.max(0, S.shield - dt * 1.8);
   S.burst = Math.max(0, S.burst - dt * 0.9);
   S.catchT = Math.max(0, S.catchT - dt * 0.8);
-  S.white = ease(S.white, S.whiteT, 2.2, dt);
+  S.white = ease(S.white, S.whiteT, S.whiteT > S.white ? 1.6 : 0.7, dt);
+  S.glowPop = Math.max(0, S.glowPop - dt * 2.5);
+  S.punch = ease(S.punch, S.punchT, S.punchT > S.punch ? 12 : 1.4, dt);
+  S.fburst = Math.max(0, S.fburst - dt * 0.38);
   S.lyric = ease(S.lyric, S.lyricT, 0.8, dt);
   if (S.bare) S.sashT = 0;
 }

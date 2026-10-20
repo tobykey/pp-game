@@ -157,6 +157,14 @@ export const S = {
   white: 0, whiteT: 0,
   /** 돛에 번지는 가사 */
   lyric: 0, lyricT: 0,
+  /** 돛 게이지 표시 (등대의 바다에서만) */
+  gaugeOn: false,
+  /** 돛 조각이 막 빛났을 때 튀어 오르는 연출 (1 → 0) */
+  glowPop: 0,
+  /** F 폭발: 화면 배율이 확 당겨졌다 풀린다 */
+  punch: 0, punchT: 0,
+  /** F 폭발: 형광이 화면 전체로 번졌다가 걷힌다 (1 → 0) */
+  fburst: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }

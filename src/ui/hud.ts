@@ -59,6 +59,20 @@ export function cue(txt: string | null, kind: 'soft' | 'rock' = 'soft', chord: C
   updateChips();
 }
 
+
+/** 가시를 뽑을 순간: '가시 뽑기' + 어떤 코드를 어떻게 쳐야 하는지 화면에 크게 */
+export function pullCue(chord: ChordId) {
+  const el = $('#cue');
+  cueChord = chord;
+  const c = CHORDS[chord];
+  el.innerHTML = `<i>가시 뽑기</i><b>${c.label}</b><small>${c.keys.join(' · ')}</small>`
+    + `<em>왼손 ${c.keys.join(' ')} 누른 채 · 박에 맞춰 긁기</em>`;
+  el.className = 'cue rock pull';
+  void el.offsetWidth;
+  el.classList.add('show');
+  updateChips();
+}
+
 export function updateChips() {
   chipsEl.querySelectorAll<HTMLElement>('.chip').forEach(b => {
     const ch = b.dataset.ch as ChordId;

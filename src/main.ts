@@ -14,6 +14,7 @@ import { fastForward2 } from './story/chapter2';
 import { fastForward3 } from './story/chapter3';
 import { guardWaves } from './render/chapter2Art';
 import { counterWaves } from './render/chapter3Art';
+import { tickCut } from './render/cutscene';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
 import { initMenu } from './ui/menu';
@@ -32,7 +33,7 @@ function frame(now: number) {
   last = now;
   // 메뉴가 열려 있으면 세상이 멈춘다 (그림은 그대로)
   // 슬로모션이면 세상이 느리게 흐른다 (박 시계와 입력은 실제 시간 그대로)
-  if (!S.paused) { update(dt * S.timeScale); tickPointer(dt); }
+  if (!S.paused) { update(dt * S.timeScale); tickPointer(dt); tickCut(dt); }
   S.slowmo += (S.slowmoT - S.slowmo) * Math.min(1, dt * 3);
   draw();
   requestAnimationFrame(frame);

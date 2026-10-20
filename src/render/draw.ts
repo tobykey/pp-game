@@ -6,12 +6,13 @@ import { OBJ, S, cloth, fx, obj, str, thorns, view, type WorldObj } from '../wor
 import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0, sx1, toScreenX } from '../world/geometry';
 import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn, drawThornGlow } from './chapter1Art';
 import { figure } from './figure';
-import { drawCounterWaves, drawLights, drawLyric, drawWhite, hopeSailPatches } from './chapter3Art';
+import { drawCounterWaves, drawFBurst, drawLights, drawLyric, drawSailGauge, drawWhite, hopeSailPatches } from './chapter3Art';
 import { drawBurst, drawColumn, drawFallingRain, drawFrozenRain, drawGuardWaves, drawHeavyPick, drawShield, drawSlowmo } from './chapter2Art';
 import { clamp, lerp, rand } from '../util/math';
 import { beatPos, spb } from '../world/rhythm';
 import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
+import { drawCut } from './cutscene';
 
 /** 그 사람의 색. 띠와 천 조각이 같은 색이어야 한다 (복선 7) */
 const PINK = '#ff2a7f';
@@ -26,6 +27,11 @@ export function draw() {
   const camPx = camX() * W;
   // 인물 줌인 (1절의 기타 침묵): 기타를 안은 '나'에게 다가간다
   ctx.save();
+  // F 폭발: 배를 향해 화면이 확 당겨졌다가 풀린다
+  if (S.punch > 0.001) {
+    const fx0 = boatX(), fy0 = boatY() - 40, z = 1 + (reduceMotion ? 0.06 : 0.32) * S.punch;
+    ctx.translate(fx0, fy0); ctx.scale(z, z); ctx.translate(-fx0, -fy0);
+  }
   if (S.zoom > 0.001) {
     const fx0 = playerX(), fy0 = boatY() - 20, z = 1 + 0.9 * S.zoom;
     ctx.translate(fx0, fy0); ctx.scale(z, z); ctx.translate(-fx0, -fy0);
@@ -71,6 +77,7 @@ export function draw() {
   drawShield();
   drawCounterWaves();
   drawLyric();
+  drawSailGauge();
   drawGuardWaves();
   drawMist();
   drawFallingRain();
@@ -103,6 +110,7 @@ export function draw() {
   drawPaintingEdges();
   // 날아오는 천 조각도 색이 빠진 세상 위에 핑크로 (그 사람의 색)
   drawFlyers();
+  drawFBurst();
   // 가시를 뽑을 순간: 세상이 어두워지고 가시만 빛난다
   if (S.dim > 0.01) {
     ctx.globalAlpha = S.dim * 0.75; ctx.fillStyle = '#14120f'; ctx.fillRect(-40, -40, W + 80, H + 80); ctx.globalAlpha = 1;
@@ -143,6 +151,7 @@ export function draw() {
   drawWhite();
   // 눈뜸: 눈을 감은 어둠
   if (S.black > 0.001) { ctx.globalAlpha = S.black; ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  drawCut();
 }
 
 function drawIsle(o: WorldObj) {

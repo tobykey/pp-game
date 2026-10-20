@@ -10,7 +10,8 @@ import { snap } from '../audio/kit';
 import { resolveChord } from '../input/chord';
 import { flyPiece, splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
-import { banner, chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
+import { banner, chapterCard, cue, ink, pullCue, setObjective, setProgress, unlock } from '../ui/hud';
+import { playThornCut } from '../render/cutscene';
 import { pos, stringY, toScreenX } from '../world/geometry';
 import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
 import { judgeBeat } from '../world/judge';
@@ -253,7 +254,7 @@ const thornStep: StepHandler = {
         thornPhase = 'pull';
         S.dimT = 0.55;
         setObjective(TEXT1.pull); setProgress('');
-        cue(TEXT1.pullCue, 'rock', 'C');
+        pullCue('C');
         S.nextChord = 'C';
         ink(TEXT1.pullHint);
         if (!reduceMotion) S.shake = Math.max(S.shake, 6);
@@ -271,6 +272,8 @@ function pullThorn() {
   t.gone = true;
   cue(null); ink(null); setProgress(''); setObjective('');
   S.dimT = 0; S.vortexT = 0; S.nextChord = null;
+  // 화면 가득 컷신: 무엇이 뽑혔는지 똑똑히 보여 준다
+  playThornCut({ chord: 'C', from: 'E♭', to: 'E', hand: false }, () => banner(TEXT1.pulled, 'soft', 2200));
   // 음악이 뚝 끊긴다 → 한 박 뒤, 딱 한 번 기타가 C 화음으로 터진다 (복선: 가시를 받아 삼킨 그 사람의 소리)
   setTempo(65, 'none');
   const prevMode = S.mode;
@@ -283,7 +286,6 @@ function pullThorn() {
     if (!reduceMotion) S.shake = Math.max(S.shake, 12);
     splash(tp.x, tp.y - 20, 90, 1.4, PINK);
     for (let j = 0; j < 30; j++) fx.lines.push({ x: tp.x, y: tp.y - 20, a: rand(-Math.PI, Math.PI), l: rand(100, view.W * 0.45), life: 1.4, c: j % 3 ? VOLT : INK });
-    banner(TEXT1.pulled, 'rock', 2600);
     // 조표의 E♭이 빠져 뱃머리 쪽으로 떨어진다 (복선: 그 사람이 삼켰다)
     const th = thorns[1];
     th.gone = true; th.fly = { t: S.t, vx: 0, vy: 0, rot: 3, toBow: true };

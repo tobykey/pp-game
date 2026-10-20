@@ -1,15 +1,17 @@
 // 챕터 3 '돛' 장면 진행 (문구는 data/chapter3.ts, 시나리오는 docs/scenario-ch3.md)
 // 바람이 모자라다 → 희망의 돛(하얀 빛 속 두 조각) → 등대의 바다(공명 카운터 + F 폭발) → F의 문과 A♭ 가시 → 바람을 안고
 import { CHORDS, type ChordId } from '../data/chords';
-import { C3_START, CHORUS2, COUNTER_BEATS, F_BARS, GATE_BARS, TEXT3 } from '../data/chapter3';
+import { C3_START, CHORUS2, COUNTERS, F_BARS, GATE_BARS, TEXT3 } from '../data/chapter3';
 import { before, type StepId } from '../data/steps';
-import { playNote } from '../audio/engine';
+import { audioOut, playNote } from '../audio/engine';
+import { crash } from '../audio/kit';
 import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { counterWaves, lights } from '../render/chapter3Art';
-import { chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
-import { boatX, boatY, pos } from '../world/geometry';
+import { playThornCut } from '../render/cutscene';
+import { chapterCard, cue, ink, pullCue, setObjective, setProgress, unlock } from '../ui/hud';
+import { boatScale, boatX, boatY, pos } from '../world/geometry';
 import { judgeBeat } from '../world/judge';
 import { grooveBeat, grooveBeatPos, setBarChord, setTempo } from '../world/rhythm';
 import { row } from '../world/rowing';
@@ -17,7 +19,7 @@ import { S, fx, obj, str, thorns, view } from '../world/state';
 import { rand } from '../util/math';
 import { go, registerSteps, type StepHandler, type Stroke } from './director';
 
-const PINK = '#ff2a7f';
+const PINK = '#ff2a7f', BLUE = '#2f6bff';
 const done = new Set<string>();
 function once(key: string, cond: boolean, fn: () => void) {
   if (cond && !done.has(key)) { done.add(key); fn(); }
@@ -26,30 +28,42 @@ let pending: { at: number; to: StepId } | null = null;
 function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
 let currentEl = 0;
 
-/** 파란 파도를 받아쳤는지 (아주 세게 + 박) */
+/** 파란 빛을 받아쳤는지 (아주 세게 + 그 박) */
 function tryCounter(s: Stroke): boolean {
   if (s.dyn < 0.84) return false;
   const { j, n } = judgeBeat();
   const gb = grooveBeat(n);
-  const w = counterWaves.find(x => x.beat === gb && !x.done && !x.hit);
+  const w = counterWaves.find(x => x.beat === gb && x.shown && !x.done && !x.hit);
   if (!w || j === 'miss') return false;
   w.done = true;
   // 파도가 되받아쳐져 흩어진다
-  const x = boatX() + 60, y = boatY() - 30;
-  for (let i = 0; i < 26; i++) {
-    const a = rand(-Math.PI, 0), v = rand(160, 460);
-    fx.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(2, 5), life: 1, dec: 1.1, c: i % 3 ? '#2f6bff' : INK });
+  const sc = boatScale(), x = boatX() + 150 * sc, y = boatY() - 40 * sc;
+  for (let i = 0; i < 30; i++) {
+    const a = rand(-Math.PI, 0), v = rand(180, 520);
+    fx.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(2, 6), life: 1, dec: 1.1, c: i % 3 ? BLUE : INK });
   }
-  S.glow = Math.min(6, S.glow + 1);
+  S.glow = Math.min(6, S.glow + 1); S.glowPop = 1;
   return true;
+}
+/** 받아칠 박이 되면 파란 빛이 '짠!' 하고 솟는다 (소리도 함께) */
+function showWaves() {
+  const g = grooveBeatPos();
+  for (const w of counterWaves) {
+    if (w.shown || g < w.beat - w.lead) continue;
+    w.shown = true;
+    const a = audioOut(); if (a) crash(a.ac.currentTime, 0.7);
+    const sc = boatScale();
+    splash(boatX() + 150 * sc, boatY() - 30 * sc, 16, 0.7, BLUE);
+    if (!reduceMotion) S.shake = Math.max(S.shake, 3);
+  }
 }
 /** 지나간 파도는 배를 덮친다 (벌은 없다) */
 function settleWaves(gb: number) {
-  for (const w of counterWaves) if (!w.done && !w.hit && gb > w.beat) { w.hit = true; S.wobble += 0.1; splash(boatX() + 30, boatY() - 20, 14, 0.5, INK); }
+  for (const w of counterWaves) if (w.shown && !w.done && !w.hit && gb > w.beat) { w.hit = true; S.wobble += 0.1; splash(boatX() + 30, boatY() - 20, 14, 0.5, INK); }
 }
 function counterSoon() {
   const g = grooveBeatPos();
-  return counterWaves.some(w => !w.done && !w.hit && w.beat - g <= 1.2 && w.beat - g > -0.3);
+  return counterWaves.some(w => w.shown && !w.done && !w.hit && w.beat - g > -0.3);
 }
 
 // ---------- 3-1 바람이 모자라다 ----------
@@ -74,21 +88,22 @@ const stall: StepHandler = {
 };
 
 // ---------- 3-2 희망의 돛 (하얀 빛이 덮은 사이) ----------
+// 하얀 빛은 천천히 차오르고 한참 머물렀다가 천천히 걷힌다. 그 사이에 무슨 일이 있었는지는 보여 주지 않는다
 const sail: StepHandler = {
   enter() {
     ink(null);
-    S.whiteT = 1; // 그 사이에 무슨 일이 있었는지는 보여 주지 않는다
+    S.whiteT = 1;
   },
   update(_dt, el) {
-    once('stitch', el > 1.4, () => {
+    once('stitch', el > 3.2, () => {
       // 모자랐던 두 조각이 채워져 있다. 그 사람의 띠와 겉옷이 사라져 있다
       S.pieces = 6; S.bare = true;
       S.hopeSail = true; S.sail = 0.2; S.sailT = 1;
-      S.whiteT = 0;
     });
-    once('lyric', el > 3, () => { S.lyricT = 1; });
-    once('lyricOff', el > 9, () => { S.lyricT = 0; });
-    if (el > 10) goLater('c3sea', el, 0);
+    once('clear', el > 4.6, () => { S.whiteT = 0; });
+    once('lyric', el > 7, () => { S.lyricT = 1; });
+    once('lyricOff', el > 12.5, () => { S.lyricT = 0; });
+    if (el > 13.5) goLater('c3sea', el, 0);
   },
 };
 
@@ -97,13 +112,13 @@ let fBar = -1, fDone = false, seaEnded = false;
 const sea: StepHandler = {
   enter() {
     fBar = -1; fDone = false; seaEnded = false;
-    S.glow = 0;
+    S.glow = 0; S.gaugeOn = true;
     setTempo(130, 'chorus');
     setBarChord(bar => CHORUS2[bar] ?? null);
     S.cruise = 0.12;
     unlock(['Db', 'Eb', 'Cm', 'F', 'Fsus4']);
     counterWaves.length = 0;
-    COUNTER_BEATS.forEach(b => counterWaves.push({ beat: b, done: false, hit: false }));
+    COUNTERS.forEach(c => counterWaves.push({ ...c, shown: false, done: false, hit: false }));
     lights.length = 0;
   },
   beat(n) {
@@ -112,7 +127,7 @@ const sea: StepHandler = {
     settleWaves(gb);
     if (gb % 4 !== 0) return;
     const bar = gb / 4;
-    if (bar >= CHORUS2.length) { seaEnded = true; S.forced = null; cue(null); go('c3gate'); return; }
+    if (bar >= CHORUS2.length) { seaEnded = true; S.forced = null; S.gaugeOn = false; cue(null); go('c3gate'); return; }
     const c = CHORUS2[bar];
     // 마디마다 그 마디의 등대가 앞에 서서 켜진다
     lights.forEach(l => { l.lit = true; });
@@ -133,15 +148,18 @@ const sea: StepHandler = {
     }
   },
   update() {
+    showWaves();
     S.vel = Math.min(S.vel, 0.2);
     S.counterCue = counterSoon();
     once('counterHint', S.counterCue, () => ink(TEXT3.counterHint));
+    once('glowHint', S.glow >= 1, () => ink(TEXT3.glowHint));
+    once('glowFull', S.glow >= 6 && fBar < 0, () => ink(TEXT3.glowFull));
   },
   stroke(s) {
     if (fBar >= 0 && !fDone && s.chord === 'F') { fDone = true; cue(null); fBurst(); return; }
-    if (tryCounter(s)) { ink(null); return; }
+    if (tryCounter(s)) return;
     const r = row(s.dir, 0.5);
-    if (r === 'perfect') S.glow = Math.min(6, S.glow + 0.34);
+    if (r === 'perfect' && S.glow < 6) { const before = Math.floor(S.glow); S.glow = Math.min(6, S.glow + 0.34); if (Math.floor(S.glow) > before) S.glowPop = 1; }
   },
 };
 
@@ -150,12 +168,21 @@ function fBurst() {
   const full = S.glow >= 6;
   const x = boatX(), y = boatY() - 60;
   if (full) {
-    S.burst = 1; S.visionT = 1; setTimeout(() => { S.visionT = 0; }, 1800);
-    S.flash = Math.max(S.flash, reduceMotion ? 0.08 : 0.25); S.flashCol = PINK;
-    if (!reduceMotion) S.shake = Math.max(S.shake, 10);
-    for (let j = 0; j < 34; j++) fx.lines.push({ x, y, a: rand(-Math.PI, Math.PI), l: rand(140, view.W * 0.6), life: 1.4, c: j % 3 ? VOLT : PINK });
-    splash(x, y, 70, 1.3, PINK);
-    S.vel += 0.12;
+    ink(null);
+    // 한순간 시간이 멈췄다가(히트스톱) 터진다
+    S.timeScale = 0.06;
+    setTimeout(() => {
+      S.timeScale = 1;
+      S.fburst = 1; S.burst = 1;
+      S.punchT = 1; setTimeout(() => { S.punchT = 0; }, 260);
+      S.visionT = 1; setTimeout(() => { S.visionT = 0; }, 2200);
+      if (!reduceMotion) S.shake = Math.max(S.shake, 16);
+      const a = audioOut(); if (a) crash(a.ac.currentTime, 1.6);
+      for (let j = 0; j < 60; j++) fx.lines.push({ x, y, a: rand(-Math.PI, Math.PI), l: rand(200, view.W * 0.9), life: 1.8, c: j % 3 ? VOLT : PINK });
+      splash(x, y, 120, 1.8, PINK);
+      splash(x, y, 60, 1.4, VOLT);
+      S.vel += 0.25;
+    }, 140);
     S.glow = 0;
   } else {
     S.burst = 0.45;
@@ -178,7 +205,7 @@ const gate: StepHandler = {
     lights.length = 0;
     lights.push({ wx: S.boat + 0.5, chord: 'F', lit: false, up: true });
     S.vortexT = 0.4;
-    counterWaves.length = 0; nextWave = 2;
+    counterWaves.length = 0; nextWave = 3;
     setProgress(TEXT3.progressGate(0));
   },
   beat(n) {
@@ -186,11 +213,12 @@ const gate: StepHandler = {
     if (gb < 0) return;
     settleWaves(gb);
     if (gb % 4 === 0) { const c = GATE_BARS[(gb / 4) % GATE_BARS.length]; if (gatePhase === 'hold') { S.forced = c; resolveChord(); } }
-    // 버티는 동안 두 박마다 파란 파도
-    if (gatePhase === 'hold' && gb + 2 >= nextWave) { counterWaves.push({ beat: nextWave, done: false, hit: false }); nextWave += 2; }
+    // 버티는 동안 두 박마다 파란 빛 (정박에 나타나 다음 정박에 받아치기)
+    if (gatePhase === 'hold' && gb + 2 >= nextWave) { counterWaves.push({ beat: nextWave, lead: 1, shown: false, done: false, hit: false }); nextWave += 2; }
   },
   update() {
     S.vel = 0;
+    if (gatePhase === 'hold') showWaves();
     S.counterCue = gatePhase === 'hold' && counterSoon();
   },
   stroke(s) {
@@ -199,13 +227,13 @@ const gate: StepHandler = {
         S.meter = Math.min(1, S.meter + 1 / 6);
         setProgress(TEXT3.progressGate(Math.round(S.meter * 6)));
         if (S.meter >= 1) {
-          // 다 버텼다: 세상이 어두워지고 가시만 빛난다
+          // 다 버텼다: 세상이 어두워지고 가시만 빛난다. 화면 가득 '가시 뽑기 F'
           gatePhase = 'pull';
           S.forced = null; resolveChord();
           counterWaves.length = 0; S.counterCue = false;
           S.dimT = 0.55;
           setObjective(TEXT3.fGate); setProgress('');
-          cue(TEXT3.fCue, 'rock', 'F'); S.nextChord = 'F';
+          pullCue('F'); S.nextChord = 'F';
         }
       }
       return;
@@ -225,16 +253,17 @@ function pullAflat() {
   S.dimT = 0; S.vortexT = 0;
   // F의 A♮가 A♭을 원래 음으로 되돌린다
   CHORDS.F.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 22));
-  S.flash = Math.max(S.flash, reduceMotion ? 0.08 : 0.28); S.flashCol = PINK;
   if (!reduceMotion) S.shake = Math.max(S.shake, 9);
   splash(tp.x, tp.y - 20, 60, 1.2, PINK);
   for (let j = 0; j < 24; j++) fx.lines.push({ x: tp.x, y: tp.y - 20, a: rand(-Math.PI, 0), l: rand(100, view.W * 0.4), life: 1.3, c: j % 3 ? VOLT : INK });
   const th = thorns[2]; // A♭
   th.gone = true; th.fly = { t: S.t, vx: 0, vy: 0, rot: 3, toBow: true };
-  // 가시가 뱃머리에 닿을 즈음, 잠든 줄 알았던 그 사람의 손이 아주 조금 움직여 받는다
-  setTimeout(() => { S.catchT = 1; }, 1000);
   lights.forEach(l => { l.lit = true; });
-  goLater('c3after', currentEl, 4.5);
+  // 화면 가득 컷신: 뽑힌 ♭ → 잠든 줄 알았던 그 사람의 손이 받는다. 끝나면 게임 속 손도 살짝 오므린다
+  playThornCut({ chord: 'F', from: 'A♭', to: 'A', hand: true }, () => {
+    S.catchT = 1;
+    goLater('c3after', currentEl, 1.5);
+  });
 }
 
 // ---------- 3-6 바람을 안고 ----------

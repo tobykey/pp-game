@@ -3,6 +3,7 @@ import type { ChordId } from '../data/chords';
 import { STEPS, before, type StepId } from '../data/steps';
 import { setTempo } from '../world/rhythm';
 import { S } from '../world/state';
+import { cutActive } from '../render/cutscene';
 import { fadeHelp, setMode, setObjective, setProgress } from '../ui/hud';
 
 export interface Stroke {
@@ -58,7 +59,7 @@ export function go(id: StepId) {
 export const elapsed = () => el;
 
 export function updateStory(dt: number) { el += dt; cur.update?.(dt, el); }
-export function onStroke(s: Stroke) { if (S.started) cur.stroke?.(s); }
+export function onStroke(s: Stroke) { if (S.started && !cutActive()) cur.stroke?.(s); }
 export function onPluck() { if (S.started) cur.pluck?.(); }
 export function onSweep(s: Sweep) { if (S.started) cur.sweep?.(s); }
 export function onBeat(n: number) { cur.beat?.(n); }
