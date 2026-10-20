@@ -17,8 +17,11 @@ export interface ThornCut {
 }
 
 // 장면 시간표 (초)
-const IN = 0.28, SLAM = 0.45, YANK = 0.75, OUT_GONE = 1.6;
-const HAND0 = 1.9, HAND_DUR = 3.0;
+// 박힌 ♭을 충분히 보여 주고(~0.9초), ♮이 박힌 채 버티다가(~0.7초), 천천히 솟구쳐 사라진다(~1.3초)
+const IN = 0.35, SLAM = 0.9, YANK = 1.6, OUT_GONE = 2.9;
+/** ♮이 내리꽂히는 순간 (장면이 이때 코드 소리를 낸다) */
+export const CUT_SLAM_MS = SLAM * 1000;
+const HAND0 = 3.4, HAND_DUR = 3.0;
 const FADE = 0.45;
 
 let cut: (ThornCut & { t: number; end: number }) | null = null;
@@ -27,7 +30,7 @@ let onEnd: (() => void) | null = null;
 
 /** 가시 뽑기 컷신을 시작한다. 끝나면 done을 부른다 */
 export function playThornCut(c: ThornCut, done?: () => void) {
-  cut = { ...c, t: 0, end: c.hand ? HAND0 + HAND_DUR + FADE : 2.7 + FADE };
+  cut = { ...c, t: 0, end: c.hand ? HAND0 + HAND_DUR + FADE : OUT_GONE + 1.4 + FADE };
   drops = []; onEnd = done ?? null;
   document.body.classList.add('cutting');
 }
@@ -138,8 +141,8 @@ function drawPull(t: number) {
   brushText(cut!.from, cx, H * 0.14, 46, INK, 0);
   ctx.globalAlpha = 1;
   // 코드와 ♮이 위에서 내리꽂힌다
-  if (t > SLAM - 0.12) {
-    const k = easeOut((t - (SLAM - 0.12)) / 0.12);
+  if (t > SLAM - 0.18) {
+    const k = easeOut((t - (SLAM - 0.18)) / 0.18);
     const ny = lerp(-H * 0.2, wy - 120 * sc, k);
     if (t < YANK + 0.5) natural(cx - 150 * sc, ny + (t > SLAM && !reduceMotion ? Math.sin(t * 50) * 3 * clamp01(YANK - t + 0.3) : 0), sc * 0.95);
     brushText(cut!.chord, W * 0.2, lerp(-H * 0.2, H * 0.3, k), Math.round(170 * sc / 1.6), VOLT, 10);

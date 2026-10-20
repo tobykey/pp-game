@@ -11,7 +11,7 @@ import { resolveChord } from '../input/chord';
 import { flyPiece, splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { banner, chapterCard, cue, ink, pullCue, setObjective, setProgress, unlock } from '../ui/hud';
-import { playThornCut } from '../render/cutscene';
+import { CUT_SLAM_MS, playThornCut } from '../render/cutscene';
 import { pos, stringY, toScreenX } from '../world/geometry';
 import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
 import { judgeBeat } from '../world/judge';
@@ -273,7 +273,7 @@ function pullThorn() {
   cue(null); ink(null); setProgress(''); setObjective('');
   S.dimT = 0; S.vortexT = 0; S.nextChord = null;
   // 화면 가득 컷신: 무엇이 뽑혔는지 똑똑히 보여 준다
-  playThornCut({ chord: 'C', from: 'E♭', to: 'E', hand: false }, () => banner(TEXT1.pulled, 'soft', 2200));
+  playThornCut({ chord: 'C', from: 'E♭', to: 'E', hand: false }, () => { banner(TEXT1.pulled, 'soft', 2200); goLater('c1rain', currentEl, 1.5); });
   // 음악이 뚝 끊긴다 → 한 박 뒤, 딱 한 번 기타가 C 화음으로 터진다 (복선: 가시를 받아 삼킨 그 사람의 소리)
   setTempo(65, 'none');
   const prevMode = S.mode;
@@ -299,8 +299,7 @@ function pullThorn() {
       p.gone = true;
     }
     S.crack = 1; S.pose = 2;
-  }, 450);
-  goLater('c1rain', currentEl, 4);
+  }, CUT_SLAM_MS);
 }
 
 // ---------- 1-4 비 ----------

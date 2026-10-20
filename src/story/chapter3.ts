@@ -9,7 +9,7 @@ import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { counterWaves, lights } from '../render/chapter3Art';
-import { playThornCut } from '../render/cutscene';
+import { CUT_SLAM_MS, playThornCut } from '../render/cutscene';
 import { chapterCard, cue, ink, pullCue, setObjective, setProgress, unlock } from '../ui/hud';
 import { boatScale, boatX, boatY, pos } from '../world/geometry';
 import { judgeBeat } from '../world/judge';
@@ -252,7 +252,7 @@ function pullAflat() {
   cue(null); ink(null); setObjective(''); S.nextChord = null;
   S.dimT = 0; S.vortexT = 0;
   // F의 A♮가 A♭을 원래 음으로 되돌린다
-  CHORDS.F.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 22));
+  CHORDS.F.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, CUT_SLAM_MS + i * 22));
   if (!reduceMotion) S.shake = Math.max(S.shake, 9);
   splash(tp.x, tp.y - 20, 60, 1.2, PINK);
   for (let j = 0; j < 24; j++) fx.lines.push({ x: tp.x, y: tp.y - 20, a: rand(-Math.PI, 0), l: rand(100, view.W * 0.4), life: 1.3, c: j % 3 ? VOLT : INK });
