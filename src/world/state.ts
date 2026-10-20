@@ -5,6 +5,7 @@ import { OBJECTS } from '../data/chapter0';
 import { OBJECTS1 } from '../data/chapter1';
 import { OBJECTS2 } from '../data/chapter2';
 import { OBJECTS3 } from '../data/chapter3';
+import { OBJECTS4 } from '../data/chapter4';
 import type { ObjDef } from '../data/defs';
 import type { StepId } from '../data/steps';
 import { seeded } from '../util/math';
@@ -12,7 +13,7 @@ import { seeded } from '../util/math';
 /** 화면 크기 (CSS 픽셀)와 화면 배율 */
 export const view = { W: 0, H: 0, DPR: 1 };
 
-export type Groove = 'none' | 'heart' | 'hook' | 'chorus' | 'verse' | 'pre';
+export type Groove = 'none' | 'heart' | 'hook' | 'chorus' | 'verse' | 'pre' | 'storm';
 
 export const S = {
   started: false,
@@ -165,6 +166,18 @@ export const S = {
   punch: 0, punchT: 0,
   /** F 폭발: 형광이 화면 전체로 번졌다가 걷힌다 (1 → 0) */
   fburst: 0,
+
+  // 챕터 4
+  /** 바다가 말라 갈라진 바닥이 드러난 정도 */
+  dry: 0, dryT: 0,
+  /** 폭풍: 어두운 하늘, 갈필 바람, 수평선의 물벽 */
+  storm: 0, stormT: 0,
+  /** 폭주 스트로크: 화면이 배 쪽으로 조여 오는 정도 */
+  press: 0, pressT: 0,
+  /** 격돌 게이지 (0 = 물벽에 밀림, 1 = 다 밀어냄). 음수면 격돌 중이 아님 */
+  tug: -1,
+  /** D.S. 표지가 빛나는 정도 */
+  dsT: 0, ds: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }
@@ -208,7 +221,7 @@ export interface WorldObj extends ObjDef {
   seen: boolean;
 }
 
-export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1, ...OBJECTS2, ...OBJECTS3].map(o => ({
+export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1, ...OBJECTS2, ...OBJECTS3, ...OBJECTS4].map(o => ({
   ...o, vis: 0, detail: 0, found: false, lit: 0, res: 0, pts: [], gone: false, play: 0, look: 0, seen: false,
 }));
 OBJ.filter(o => o.kind === 'isle').forEach(o => {

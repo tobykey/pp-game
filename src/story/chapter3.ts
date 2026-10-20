@@ -11,15 +11,16 @@ import { INK, VOLT, reduceMotion } from '../render/palette';
 import { counterWaves, lights } from '../render/chapter3Art';
 import { CUT_SLAM_MS, playThornCut } from '../render/cutscene';
 import { chapterCard, cue, ink, pullCue, setObjective, setProgress, unlock } from '../ui/hud';
-import { boatScale, boatX, boatY, pos } from '../world/geometry';
+import { boatX, boatY, pos } from '../world/geometry';
 import { judgeBeat } from '../world/judge';
-import { grooveBeat, grooveBeatPos, setBarChord, setTempo } from '../world/rhythm';
+import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
 import { row } from '../world/rowing';
 import { S, fx, obj, str, thorns, view } from '../world/state';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler, type Stroke } from './director';
+import { go, registerSteps, type StepHandler } from './director';
+import { counterSoon, settleWaves, showWaves, tryCounter } from './counter';
 
-const PINK = '#ff2a7f', BLUE = '#2f6bff';
+const PINK = '#ff2a7f';
 const done = new Set<string>();
 function once(key: string, cond: boolean, fn: () => void) {
   if (cond && !done.has(key)) { done.add(key); fn(); }
@@ -27,44 +28,6 @@ function once(key: string, cond: boolean, fn: () => void) {
 let pending: { at: number; to: StepId } | null = null;
 function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
 let currentEl = 0;
-
-/** 파란 빛을 받아쳤는지 (아주 세게 + 그 박) */
-function tryCounter(s: Stroke): boolean {
-  if (s.dyn < 0.84) return false;
-  const { j, n } = judgeBeat();
-  const gb = grooveBeat(n);
-  const w = counterWaves.find(x => x.beat === gb && x.shown && !x.done && !x.hit);
-  if (!w || j === 'miss') return false;
-  w.done = true;
-  // 파도가 되받아쳐져 흩어진다
-  const sc = boatScale(), x = boatX() + 150 * sc, y = boatY() - 40 * sc;
-  for (let i = 0; i < 30; i++) {
-    const a = rand(-Math.PI, 0), v = rand(180, 520);
-    fx.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(2, 6), life: 1, dec: 1.1, c: i % 3 ? BLUE : INK });
-  }
-  S.glow = Math.min(6, S.glow + 1); S.glowPop = 1;
-  return true;
-}
-/** 받아칠 박이 되면 파란 빛이 '짠!' 하고 솟는다 (소리도 함께) */
-function showWaves() {
-  const g = grooveBeatPos();
-  for (const w of counterWaves) {
-    if (w.shown || g < w.beat - w.lead) continue;
-    w.shown = true;
-    const a = audioOut(); if (a) crash(a.ac.currentTime, 0.7);
-    const sc = boatScale();
-    splash(boatX() + 150 * sc, boatY() - 30 * sc, 16, 0.7, BLUE);
-    if (!reduceMotion) S.shake = Math.max(S.shake, 3);
-  }
-}
-/** 지나간 파도는 배를 덮친다 (벌은 없다) */
-function settleWaves(gb: number) {
-  for (const w of counterWaves) if (w.shown && !w.done && !w.hit && gb > w.beat) { w.hit = true; S.wobble += 0.1; splash(boatX() + 30, boatY() - 20, 14, 0.5, INK); }
-}
-function counterSoon() {
-  const g = grooveBeatPos();
-  return counterWaves.some(w => w.shown && !w.done && !w.hit && w.beat - g > -0.3);
-}
 
 // ---------- 3-1 바람이 모자라다 ----------
 const stall: StepHandler = {
@@ -274,7 +237,8 @@ const after: StepHandler = {
     if (S.glow > 0) S.glow = Math.max(0, S.glow - dt * 1.5);
     once('line', el > 2, () => ink(TEXT3.after));
     if (el > 7) S.cruise = Math.max(0, S.cruise - dt * 0.03);
-    once('end', el > 9, () => { ink(null); setObjective(TEXT3.nextChapter); });
+    // 바다가 낮아지기 시작한다 → 챕터 4
+    if (el > 10) goLater('c4ebb', el, 0);
   },
 };
 

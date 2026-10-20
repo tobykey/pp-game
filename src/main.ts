@@ -12,6 +12,7 @@ import { fastForward0 } from './story/chapter0';
 import { fastForward1 } from './story/chapter1';
 import { fastForward2 } from './story/chapter2';
 import { fastForward3 } from './story/chapter3';
+import { fastForward4 } from './story/chapter4';
 import { guardWaves } from './render/chapter2Art';
 import { counterWaves } from './render/chapter3Art';
 import { tickCut } from './render/cutscene';
@@ -61,6 +62,7 @@ function start(step: StepId) {
   fastForward1(step);
   fastForward2(step);
   fastForward3(step);
+  fastForward4(step);
   resolveChord();
   go(step);
 }

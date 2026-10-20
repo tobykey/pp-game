@@ -112,5 +112,15 @@ function playStep(i: number, at: number, step: number) {
       if (sub % 2 === 0) bass(at, ROOT[barChord?.(bar) ?? S.forced ?? S.chord], step * 2);
       break;
     }
+    case 'storm': {
+      // 폭풍(리프 + 랩)과 격돌: 매 박 킥, 16분 하이햇, 스네어 2·4박, 마디마다 크래시, 16분 베이스로 몰아친다
+      hat(at, sub === 0 ? 0.9 : 0.55);
+      if (sub === 0) kick(at);
+      if (sub === 2 && inBar === 3) kick(at, 0.8);
+      if (sub === 0 && (inBar === 1 || inBar === 3)) snare(at);
+      if (sub === 0 && inBar === 0) crash(at, 0.8);
+      bass(at, ROOT[barChord?.(bar) ?? S.forced ?? S.chord], step, sub === 0 ? 1 : 0.75);
+      break;
+    }
   }
 }

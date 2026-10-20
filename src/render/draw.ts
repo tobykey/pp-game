@@ -13,6 +13,7 @@ import { beatPos, spb } from '../world/rhythm';
 import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 import { drawCut } from './cutscene';
+import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
 
 /** 그 사람의 색. 띠와 천 조각이 같은 색이어야 한다 (복선 7) */
 const PINK = '#ff2a7f';
@@ -27,6 +28,11 @@ export function draw() {
   const camPx = camX() * W;
   // 인물 줌인 (1절의 기타 침묵): 기타를 안은 '나'에게 다가간다
   ctx.save();
+  // 폭주 스트로크: 화면이 배 쪽으로 점점 조여 온다 (동작 줄이기에선 조금만)
+  if (S.press > 0.001) {
+    const fx0 = boatX(), fy0 = boatY() - 40, z = 1 + (reduceMotion ? 0.08 : 0.3) * S.press;
+    ctx.translate(fx0, fy0); ctx.scale(z, z); ctx.translate(-fx0, -fy0);
+  }
   // F 폭발: 배를 향해 화면이 확 당겨졌다가 풀린다
   if (S.punch > 0.001) {
     const fx0 = boatX(), fy0 = boatY() - 40, z = 1 + (reduceMotion ? 0.06 : 0.32) * S.punch;
@@ -48,6 +54,7 @@ export function draw() {
   ctx.restore();
   ctx.strokeStyle = 'rgba(23,20,15,.35)'; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(0, hz() + 2); ctx.lineTo(W, hz() + 2); ctx.stroke();
+  drawStorm();
   OBJ.filter(o => o.kind === 'isle').forEach(drawIsle);
   OBJ.filter(o => o.kind === 'painting').forEach(drawPainting);
   drawLights();
@@ -60,6 +67,9 @@ export function draw() {
     ctx.beginPath(); ctx.moveTo(xx, s.y); ctx.quadraticCurveTo(xx + s.len / 2, s.y - 1.6 * s.w, xx + s.len, s.y); ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  drawDrySea();
+  drawTrails();
+  drawCrackTexts();
   drawRipples();
   drawFrozenRain();
   drawRoad();
@@ -71,8 +81,12 @@ export function draw() {
     else if (o.kind === 'buoy') drawBuoy(o);
     else if (o.kind === 'thorn') drawThorn(o);
     else if (o.kind === 'column') drawColumn(o);
+    else if (o.kind === 'relic') drawRelic(o);
+    else if (o.kind === 'sign') drawSign(o);
   });
   drawCloth();
+  drawClashWall();
+  drawGrounded();
   drawBoat(acc);
   drawShield();
   drawCounterWaves();
@@ -111,6 +125,7 @@ export function draw() {
   // 날아오는 천 조각도 색이 빠진 세상 위에 핑크로 (그 사람의 색)
   drawFlyers();
   drawFBurst();
+  drawClashGauge();
   // 가시를 뽑을 순간: 세상이 어두워지고 가시만 빛난다
   if (S.dim > 0.01) {
     ctx.globalAlpha = S.dim * 0.75; ctx.fillStyle = '#14120f'; ctx.fillRect(-40, -40, W + 80, H + 80); ctx.globalAlpha = 1;
@@ -361,6 +376,8 @@ function drawBoat(acc: string) {
     ctx.beginPath(); ctx.moveTo(hx - 1, hy - 2.5); ctx.lineTo(hx + 1, hy - 0.5); ctx.lineTo(hx - 0.5, hy + 0.8); ctx.lineTo(hx + 1.2, hy + 2.6); ctx.stroke();
     // 금이 팔꿈치까지 번졌다 (가시를 둘 삼킨 뒤)
     if (S.crack > 1) { ctx.beginPath(); ctx.moveTo(hx + 1.2, hy + 2.6); ctx.lineTo(hx + 8, hy + 1); ctx.lineTo(hx + 14, hy + 3); ctx.lineTo(hx + 22, hy + 1); ctx.lineTo(hx + 30, hy + 2); ctx.stroke(); }
+    // 금이 어깨까지 (가시를 셋 삼킨 뒤)
+    if (S.crack > 2) crackToShoulder(hx, hy);
     ctx.strokeStyle = INK; ctx.lineWidth = 3;
   }
   // 핫핑크 띠. 천 조각을 얻을 때마다 조금씩 짧아진다 (복선 7)
