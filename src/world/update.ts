@@ -98,4 +98,5 @@ export function update(dt: number) {
   S.frozenVis = ease(S.frozenVis, S.frozenVisT, 1.2, dt);
   S.rainFall = ease(S.rainFall, S.rainFallT, 1.5, dt);
   S.shield = Math.max(0, S.shield - dt * 1.8);
+  S.burst = Math.max(0, S.burst - dt * 0.9);
 }

@@ -128,6 +128,16 @@ export const S = {
   guardCue: false,
   /** 막았을 때 배 위에 펴지는 우산 모양 먹 번짐 */
   shield: 0,
+  /** 슬로모션: 세상이 흐르는 빠르기 (1 보통) */
+  timeScale: 1,
+  /** 슬로모션 연출 정도 (0~1) */
+  slowmo: 0, slowmoT: 0,
+  /** 무거운 피크: 피크가 마우스를 천천히만 따라온다 (빨리 긁을 수 없음) */
+  heavy: false,
+  /** 무거운 피크의 화면 위치 */
+  hx: 0, hy: 0,
+  /** 슬로모션이 풀리는 순간의 폭발 (1 → 0) */
+  burst: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }

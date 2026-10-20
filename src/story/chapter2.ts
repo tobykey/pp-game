@@ -8,6 +8,8 @@ import { before, type StepId } from '../data/steps';
 import { audioOut, playNote } from '../audio/engine';
 import { crash, scratch } from '../audio/kit';
 import { resolveChord } from '../input/chord';
+import { setHeavy } from '../input/pointer';
+import { cv } from '../render/canvas';
 import { flyPiece, splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { guardWaves } from '../render/chapter2Art';
@@ -215,19 +217,26 @@ const resolve: StepHandler = {
     if (resolvePhase === 'c' && s.chord === 'C') {
       resolvePhase = 'sweep'; cAt = S.t;
       strumChord('C', 0.8, false);
-      cue(TEXT2.sweepCue, 'soft'); ink(TEXT2.sweepHint);
+      // 슬로모션: 세상이 느려지고, 피크가 무거워져 천천히만 움직인다. 여섯 줄을 끝까지 긁어야 풀린다
+      S.timeScale = 0.3; S.slowmoT = 1;
+      setHeavy(true, cv);
+      cue(TEXT2.sweepCue, 'soft'); ink(TEXT2.slowHint);
       S.nextChord = 'Db';
     }
   },
   sweep(sw) {
     if (resolvePhase !== 'sweep' || sw.dir < 0 || S.t - cAt < 0.6) return;
-    if (sw.dur < 0.9) { ink(TEXT2.sweepSlower); return; }
+    if (sw.dur < 0.6) { ink(TEXT2.sweepSlower); return; }
     finale();
   },
 };
 function finale() {
   resolvePhase = 'done';
   cue(null); ink(null);
+  // 소리가 나는 순간, 느려졌던 시간이 한꺼번에 원래대로 돌아온다
+  setHeavy(false, cv);
+  S.timeScale = 1; S.slowmoT = 0;
+  S.burst = 1;
   const o = audioOut();
   if (o) { scratch(o.ac.currentTime + 0.01, 0.7); crash(o.ac.currentTime + 0.72, 1.2); }
   // 기대를 깨고 후렴(D♭)으로 터진다

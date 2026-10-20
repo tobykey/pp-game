@@ -6,7 +6,7 @@ import { OBJ, S, cloth, fx, obj, str, thorns, view, type WorldObj } from '../wor
 import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0, sx1, toScreenX } from '../world/geometry';
 import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn, drawThornGlow } from './chapter1Art';
 import { figure } from './figure';
-import { drawColumn, drawFallingRain, drawFrozenRain, drawGuardWaves, drawShield } from './chapter2Art';
+import { drawBurst, drawColumn, drawFallingRain, drawFrozenRain, drawGuardWaves, drawHeavyPick, drawShield, drawSlowmo } from './chapter2Art';
 import { clamp, lerp, rand } from '../util/math';
 import { beatPos, spb } from '../world/rhythm';
 import { backdrop, ctx } from './canvas';
@@ -131,7 +131,10 @@ export function draw() {
   drawDyn(acc);
   // 눈뜸: 하얀 빛 속에서 세상이 떠오른다
   if (S.reveal < 1) { ctx.globalAlpha = 1 - S.reveal; ctx.drawImage(backdrop.paper!, -40, -40, W + 80, H + 80); ctx.globalAlpha = 1; }
+  drawSlowmo();
   drawStrings(acc);
+  drawBurst();
+  drawHeavyPick();
   ctx.restore();
   // 눈뜸: 눈을 감은 어둠
   if (S.black > 0.001) { ctx.globalAlpha = S.black; ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }

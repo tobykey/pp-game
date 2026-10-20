@@ -3,7 +3,7 @@ import './style.css';
 import { initAudio } from './audio/engine';
 import { STEPS, STEP_NAMES, type StepId } from './data/steps';
 import { bindKeyboard } from './input/keyboard';
-import { bindPointer } from './input/pointer';
+import { bindPointer, tickPointer } from './input/pointer';
 import { resolveChord, toggleSticky } from './input/chord';
 import { cv, resize } from './render/canvas';
 import { draw } from './render/draw';
@@ -29,7 +29,9 @@ function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000); // 탭을 오래 비워도 한 프레임이 너무 크게 튀지 않게
   last = now;
   // 메뉴가 열려 있으면 세상이 멈춘다 (그림은 그대로)
-  if (!S.paused) update(dt);
+  // 슬로모션이면 세상이 느리게 흐른다 (박 시계와 입력은 실제 시간 그대로)
+  if (!S.paused) { update(dt * S.timeScale); tickPointer(dt); }
+  S.slowmo += (S.slowmoT - S.slowmo) * Math.min(1, dt * 3);
   draw();
   requestAnimationFrame(frame);
 }

@@ -6,7 +6,7 @@ import { boatScale, boatX, boatY, hz, pos, sb, toScreenX } from '../world/geomet
 import { grooveBeatPos } from '../world/rhythm';
 import { seeded } from '../util/math';
 import { ctx } from './canvas';
-import { BRUSH, INK, INK_SOFT, VOLT } from './palette';
+import { BRUSH, INK, INK_SOFT, VOLT, reduceMotion } from './palette';
 
 const PINK = '#ff2a7f';
 const ramp = (p: number, a: number, b: number) => Math.max(0, Math.min(1, (p - a) / (b - a)));
@@ -90,7 +90,7 @@ export function drawColumn(o: WorldObj) {
     ctx.beginPath(); ctx.moveTo(p.x + dx, y); ctx.lineTo(p.x + dx - 1, y + 8); ctx.stroke();
   }
   // 빛나는 층의 코드 글자 (미리보기와 같은 정보)
-  if (!o.gone && o.lit > 0 && seq[o.lit - 1]) {
+  if (!o.gone && o.lit > 0 && seq[o.lit - 1] && o.id === 'col0') {
     const layer = o.lit - 1, y = top + (bot - top) * ((layer + 0.5) / n);
     ctx.globalAlpha = 0.9; ctx.fillStyle = INK; ctx.font = `26px ${BRUSH}`; ctx.textAlign = 'center';
     ctx.fillText(CHORDS[seq[layer]].label, p.x + 54, y + 8);
@@ -183,5 +183,52 @@ export function footprints(x: number, y: number, look: number) {
   }
   ctx.fillStyle = PINK; ctx.globalAlpha = look * 0.9;
   ctx.beginPath(); ctx.arc(x + 40, y - 20, 4, 0, Math.PI * 2); ctx.fill(); // 우산 끝에서 떨어진 핑크 물방울
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+
+/** 슬로모션: 세상이 차갑게 가라앉고 가장자리가 조여 든다 */
+export function drawSlowmo() {
+  if (S.slowmo < 0.01) return;
+  const { W, H } = view, a = S.slowmo;
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.28 * a; ctx.fillStyle = '#7d8696';
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
+  const g = ctx.createRadialGradient(W / 2, H * 0.6, Math.min(W, H) * 0.25, W / 2, H * 0.6, Math.max(W, H) * 0.7);
+  g.addColorStop(0, 'rgba(20,18,15,0)'); g.addColorStop(1, 'rgba(20,18,15,1)');
+  ctx.globalAlpha = 0.35 * a; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+
+/** 무거운 피크: 화면에 그린 피크가 먹 잔상을 끌며 천천히 따라온다 */
+const trail: { x: number; y: number }[] = [];
+export function drawHeavyPick() {
+  if (!S.heavy) { trail.length = 0; return; }
+  trail.push({ x: S.hx, y: S.hy }); if (trail.length > 14) trail.shift();
+  trail.forEach((p, i) => {
+    const k = (i + 1) / trail.length;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(-0.44); ctx.scale(1.6, 1.6);
+    ctx.globalAlpha = k * (i === trail.length - 1 ? 1 : 0.18); ctx.fillStyle = INK; ctx.strokeStyle = '#eae6de'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 14); ctx.bezierCurveTo(-7, 6, -12, -2, -11, -8); ctx.bezierCurveTo(-10, -13, -4, -14, 0, -14);
+    ctx.bezierCurveTo(4, -14, 10, -13, 11, -8); ctx.bezierCurveTo(12, -2, 7, 6, 0, 14); ctx.fill(); if (i === trail.length - 1) ctx.stroke();
+    if (i === trail.length - 1) { ctx.fillStyle = PINK; ctx.beginPath(); ctx.arc(5, -8, 1.8, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  });
+  ctx.globalAlpha = 1;
+}
+
+/** 시간이 원래대로 돌아오는 순간의 폭발: 배에서 핑크·노랑 고리와 하얀 빛이 퍼진다 */
+export function drawBurst() {
+  if (S.burst < 0.01) return;
+  const { W, H } = view, e = 1 - S.burst, x = boatX(), y = boatY() - 30;
+  ctx.save();
+  const g = ctx.createRadialGradient(x, y, 0, x, y, Math.max(W, H) * (0.2 + 0.9 * e));
+  g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(0.4, 'rgba(255,226,61,.35)'); g.addColorStop(1, 'rgba(255,42,127,0)');
+  ctx.globalAlpha = S.burst * (reduceMotion ? 0.3 : 0.7); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  for (const [col, off, wd] of [[PINK, 0, 10], [VOLT, 0.12, 6], [INK, 0.22, 3]] as const) {
+    const r = Math.max(W, H) * Math.max(0, e - off) * 1.1;
+    ctx.globalAlpha = S.burst; ctx.strokeStyle = col; ctx.lineWidth = wd * S.burst + 1;
+    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
+  }
   ctx.restore(); ctx.globalAlpha = 1;
 }

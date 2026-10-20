@@ -33,8 +33,8 @@ export const P_MEET = C2_START + 2.7;
 export const DROPS_FROM = C2_START + 0.2, DROPS_TO = P_MEET + 0.3;
 
 const PRE = section('prechorus').chords; // D♭ E♭ Cm D♭ / D♭ E♭ Csus4 C
-/** 되받아 치기: 2개 → 3개 → 4개 (프리코러스 앞 4마디) */
-export const ECHO_SEQS: ChordId[][] = [PRE.slice(0, 2), PRE.slice(0, 3), PRE.slice(0, 4)];
+/** 되받아 치기: 3개 → 4개 → 5개. 마지막 기둥은 프리코러스 끝의 Csus4까지 (2026-10-20: 조금 더 어렵게) */
+export const ECHO_SEQS: ChordId[][] = [PRE.slice(0, 3), PRE.slice(0, 4), [...PRE.slice(0, 4), 'Csus4']];
 /** 쏟아지는 비: 프리코러스 앞 6마디 */
 export const GUARD_BARS: ChordId[] = PRE.slice(0, 6);
 /** 노란 빗줄기가 덮치는 박 (그루브 시작부터 센 박). 처음엔 드문드문, 뒤로 갈수록 자주 */
@@ -57,6 +57,7 @@ export const TEXT2 = {
   sweepHint: '여섯 줄을 위에서 아래로, 아주 천천히',
   sweepSlower: '더 천천히, 길게',
   sweepCue: '천천히, 길게',
+  slowHint: '시간이 느려졌다 · 여섯 줄을 끝까지',
   lyric: '그대를 만난 순간',
   progressEcho: (n: number, total: number) => `${n} / ${total}`,
 };
