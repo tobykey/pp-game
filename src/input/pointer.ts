@@ -17,10 +17,27 @@ interface Ptr {
 }
 
 let ptr: Ptr | null = null;
-/** 무거운 피크가 따라가는 마우스 위치 */
+/** 마우스 위치 (붙잡은 피크가 따라간다) */
 const target = { x: 0, y: 0 };
-/** 무거운 피크의 최대 속도 (px/초) */
-const HEAVY_SPEED = 150;
+
+const inSpan = (x: number) => x >= sx0() - 6 && x <= sx1() + 6;
+
+function hit(i: number, dyn: number, dir: number, x: number) {
+  if (!ptr) return;
+  pluck(i, dyn, dir, x);
+  onPluck();
+  const r = ptr.run;
+  // 방향이 바뀌면 새 스트로크 시작 (손을 떼지 않고 위아래로 긁어도 매번 한 번씩)
+  if (r.dir !== dir) { r.dir = dir; r.n = 0; r.dyn = 0; r.sent = false; }
+  if (r.n === 0) r.t0 = performance.now();
+  r.n++; r.dyn += dyn;
+  // 여섯 줄을 한 방향으로 다 긁었을 때: 얼마나 천천히 긁었는지 (피크 스크래치)
+  if (r.n === 6) onSweep({ dir, dur: (performance.now() - r.t0) / 1000 });
+  if (r.n >= 3 && !r.sent) {
+    r.sent = true;
+    onStroke({ dir, dyn: r.dyn / r.n, chord: S.chord, x: ptr.x });
+  }
+}
 
 /** 피크를 (x, y)로 옮기며, 그 사이에 가로지른 줄을 튕긴다 */
 function moveTo(x: number, y: number) {
@@ -44,52 +61,46 @@ function moveTo(x: number, y: number) {
   ptr.x = x; ptr.y = y; ptr.t = now;
 }
 
-/** 매 프레임: 무거운 피크가 마우스를 천천히 따라간다 (누르고 있으면 그 길로 줄을 긁는다) */
+/** 매 프레임: 떠다니는 피크는 네 벽에 부딪히며 흘러가고(조금씩 빨라짐), 붙잡은 피크는 마우스를 따라온다 */
 export function tickPointer(dt: number) {
-  if (!S.heavy) return;
-  const dx = target.x - S.hx, dy = target.y - S.hy, d = Math.hypot(dx, dy), step = HEAVY_SPEED * dt;
-  if (d > 0.5) { const k = Math.min(1, step / d); S.hx += dx * k; S.hy += dy * k; }
-  if (ptr) moveTo(S.hx, S.hy);
+  if (S.pickHeld) { S.hx = target.x; S.hy = target.y; return; }
+  if (!S.pickFree) return;
+  const r = 46, W = innerWidth, H = innerHeight;
+  const sp = Math.hypot(S.pvx, S.pvy), grow = Math.min(1.004, 1 + dt * 0.08);
+  if (sp < 520) { S.pvx *= grow; S.pvy *= grow; }
+  S.hx += S.pvx * dt; S.hy += S.pvy * dt;
+  if (S.hx < r) { S.hx = r; S.pvx = Math.abs(S.pvx); }
+  if (S.hx > W - r) { S.hx = W - r; S.pvx = -Math.abs(S.pvx); }
+  if (S.hy < r + 60) { S.hy = r + 60; S.pvy = Math.abs(S.pvy); }
+  if (S.hy > H - r) { S.hy = H - r; S.pvy = -Math.abs(S.pvy); }
 }
 
-/** 무거운 피크 모드를 켜고 끈다. 켤 때 피크는 지금 마우스 자리에서 시작한다 */
-export function setHeavy(on: boolean, cv: HTMLCanvasElement) {
-  S.heavy = on;
-  if (on) { S.hx = target.x || cv.clientWidth / 2; S.hy = target.y || cv.clientHeight * 0.66; cv.style.cursor = 'none'; }
-  else cv.style.cursor = BRUSH_CURSOR;
-}
-const inSpan = (x: number) => x >= sx0() - 6 && x <= sx1() + 6;
-
-function hit(i: number, dyn: number, dir: number, x: number) {
-  if (!ptr) return;
-  pluck(i, dyn, dir, x);
-  onPluck();
-  const r = ptr.run;
-  // 방향이 바뀌면 새 스트로크 시작 (손을 떼지 않고 위아래로 긁어도 매번 한 번씩)
-  if (r.dir !== dir) { r.dir = dir; r.n = 0; r.dyn = 0; r.sent = false; }
-  if (r.n === 0) r.t0 = performance.now();
-  r.n++; r.dyn += dyn;
-  // 여섯 줄을 한 방향으로 다 긁었을 때: 얼마나 천천히 긁었는지 (피크 스크래치)
-  if (r.n === 6) onSweep({ dir, dur: (performance.now() - r.t0) / 1000 });
-  if (r.n >= 3 && !r.sent) {
-    r.sent = true;
-    onStroke({ dir, dyn: r.dyn / r.n, chord: S.chord, x: ptr.x });
-  }
+/** 피크가 손에서 빠져나가 떠다니기 시작 / 끝 */
+export function setPickFloat(on: boolean, cv: HTMLCanvasElement) {
+  S.pickFree = on; S.pickHeld = false;
+  if (on) {
+    S.hx = innerWidth / 2; S.hy = innerHeight * 0.42;
+    const ang = -Math.PI / 4 + (Math.random() - 0.5);
+    S.pvx = Math.cos(ang) * 300; S.pvy = Math.sin(ang) * 300;
+    cv.style.cursor = BRUSH_CURSOR;
+  } else cv.style.cursor = BRUSH_CURSOR;
 }
 
 export function bindPointer(cv: HTMLCanvasElement) {
-  addEventListener('pointermove', e => { if (!ptr || S.heavy) { target.x = e.clientX; target.y = e.clientY; } });
+  addEventListener('pointermove', e => { if (!ptr || S.pickHeld) { target.x = e.clientX; target.y = e.clientY; } });
   cv.addEventListener('pointerdown', e => {
     if (!S.started || S.paused || S.stringsVis < 0.3) return;
     cv.setPointerCapture(e.pointerId);
     target.x = e.clientX; target.y = e.clientY;
-    // 무거운 피크: 누른 순간 피크는 제자리에서 출발한다
-    if (S.heavy) {
-      ptr = { x: S.hx, y: S.hy, t: performance.now(), v: 0, last: {}, run: { dir: 0, n: 0, dyn: 0, sent: false, t0: 0 } };
+    // 떠다니는 피크: 피크를 정확히 눌러야 붙잡는다. 붙잡은 뒤엔 그 피크로 줄을 긁는다
+    if (S.pickFree) {
+      if (Math.hypot(e.clientX - S.hx, e.clientY - S.hy) > 70) return;
+      S.pickFree = false; S.pickHeld = true; cv.style.cursor = 'none';
+      ptr = { x: e.clientX, y: e.clientY, t: performance.now(), v: 0, last: {}, run: { dir: 0, n: 0, dyn: 0, sent: false, t0: 0 } };
       return;
     }
     // 누르고 긁는 동안에만 피크를 쥔다
-    cv.style.cursor = PICK_CURSOR;
+    cv.style.cursor = S.pickHeld ? 'none' : PICK_CURSOR;
     ptr = { x: e.clientX, y: e.clientY, t: performance.now(), v: 0, last: {}, run: { dir: 0, n: 0, dyn: 0, sent: false, t0: 0 } };
     // 줄 바로 위를 누르면 그 줄 하나를 튕긴다
     for (let i = 0; i < 6; i++) {
@@ -102,14 +113,15 @@ export function bindPointer(cv: HTMLCanvasElement) {
   });
 
   cv.addEventListener('pointermove', e => {
-    // 무거운 피크: 마우스는 목표만 정하고, 피크는 tickPointer에서 천천히 따라간다
-    if (S.heavy) { target.x = e.clientX; target.y = e.clientY; return; }
+    target.x = e.clientX; target.y = e.clientY;
+    // 떠다니는 피크를 붙잡기 전에는 줄을 긁을 수 없다
+    if (S.pickFree) return;
     if (ptr) moveTo(e.clientX, e.clientY);
   });
 
   const endPtr = () => {
     ptr = null;
-    if (S.started && !S.heavy) cv.style.cursor = BRUSH_CURSOR;
+    if (S.started && !S.pickHeld) cv.style.cursor = BRUSH_CURSOR;
   };
   cv.addEventListener('pointerup', endPtr);
   cv.addEventListener('pointercancel', endPtr);

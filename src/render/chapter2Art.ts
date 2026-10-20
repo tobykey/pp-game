@@ -90,7 +90,7 @@ export function drawColumn(o: WorldObj) {
     ctx.beginPath(); ctx.moveTo(p.x + dx, y); ctx.lineTo(p.x + dx - 1, y + 8); ctx.stroke();
   }
   // 빛나는 층의 코드 글자 (미리보기와 같은 정보)
-  if (!o.gone && o.lit > 0 && seq[o.lit - 1] && o.id === 'col0') {
+  if (!o.gone && o.lit > 0 && seq[o.lit - 1]) {
     const layer = o.lit - 1, y = top + (bot - top) * ((layer + 0.5) / n);
     ctx.globalAlpha = 0.9; ctx.fillStyle = INK; ctx.font = `26px ${BRUSH}`; ctx.textAlign = 'center';
     ctx.fillText(CHORDS[seq[layer]].label, p.x + 54, y + 8);
@@ -200,20 +200,30 @@ export function drawSlowmo() {
   ctx.restore(); ctx.globalAlpha = 1;
 }
 
-/** 무거운 피크: 화면에 그린 피크가 먹 잔상을 끌며 천천히 따라온다 */
+/** 떠다니는 피크(먹 잔상을 끌며 빙글빙글) / 붙잡은 피크(마우스를 따라오는 큰 피크) */
 const trail: { x: number; y: number }[] = [];
 export function drawHeavyPick() {
-  if (!S.heavy) { trail.length = 0; return; }
-  trail.push({ x: S.hx, y: S.hy }); if (trail.length > 14) trail.shift();
+  if (!S.pickFree && !S.pickHeld) { trail.length = 0; return; }
+  trail.push({ x: S.hx, y: S.hy }); if (trail.length > (S.pickFree ? 12 : 4)) trail.shift();
+  const spin = S.pickFree ? S.t * 4 : -0.44;
   trail.forEach((p, i) => {
-    const k = (i + 1) / trail.length;
-    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(-0.44); ctx.scale(1.6, 1.6);
-    ctx.globalAlpha = k * (i === trail.length - 1 ? 1 : 0.18); ctx.fillStyle = INK; ctx.strokeStyle = '#eae6de'; ctx.lineWidth = 1;
+    const k = (i + 1) / trail.length, last = i === trail.length - 1;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(spin - (trail.length - 1 - i) * 0.15); ctx.scale(2.4, 2.4);
+    ctx.globalAlpha = last ? 1 : k * 0.16; ctx.fillStyle = INK; ctx.strokeStyle = '#eae6de'; ctx.lineWidth = 0.8;
     ctx.beginPath(); ctx.moveTo(0, 14); ctx.bezierCurveTo(-7, 6, -12, -2, -11, -8); ctx.bezierCurveTo(-10, -13, -4, -14, 0, -14);
-    ctx.bezierCurveTo(4, -14, 10, -13, 11, -8); ctx.bezierCurveTo(12, -2, 7, 6, 0, 14); ctx.fill(); if (i === trail.length - 1) ctx.stroke();
-    if (i === trail.length - 1) { ctx.fillStyle = PINK; ctx.beginPath(); ctx.arc(5, -8, 1.8, 0, Math.PI * 2); ctx.fill(); }
+    ctx.bezierCurveTo(4, -14, 10, -13, 11, -8); ctx.bezierCurveTo(12, -2, 7, 6, 0, 14); ctx.fill(); if (last) ctx.stroke();
+    if (last) {
+      ctx.strokeStyle = '#eae6de'; ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-3, -9); ctx.lineTo(-3, 4); ctx.moveTo(-3, -1); ctx.quadraticCurveTo(3, -3, 2, 1); ctx.quadraticCurveTo(0, 4, -3, 4); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.fillStyle = PINK; ctx.beginPath(); ctx.arc(5, -8, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
   });
+  // 떠다니는 동안: 붙잡으라는 듯 은은한 고리
+  if (S.pickFree) {
+    ctx.save(); ctx.strokeStyle = PINK; ctx.globalAlpha = 0.35 + 0.25 * Math.sin(S.t * 8); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(S.hx, S.hy, 52, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  }
   ctx.globalAlpha = 1;
 }
 

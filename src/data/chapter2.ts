@@ -12,7 +12,7 @@ export const STEPS2: StepDef<Step2Id>[] = [
   { id: 'c2echo', objective: '빗방울이 들려주는 순서대로 되받아 치세요', bpm: HALF_BPM, mode: 'acoustic' },
   { id: 'c2umbrella', objective: '', bpm: HALF_BPM, mode: 'acoustic' },
   { id: 'c2guard', objective: '노랗게 빛나는 비를 막으며 노를 저으세요', bpm: SONG_BPM, mode: 'rock' },
-  { id: 'c2resolve', objective: 'C로 풀고, 천천히 길게 긁으세요', bpm: SONG_BPM, mode: 'rock' },
+  { id: 'c2resolve', objective: 'C로 풀고, 떠다니는 피크를 붙잡아 세게 치세요', bpm: SONG_BPM, mode: 'rock' },
   { id: 'c2end', objective: '챕터 3 · 돛 — 준비 중', bpm: SONG_BPM, mode: 'rock' },
 ];
 
@@ -57,7 +57,11 @@ export const TEXT2 = {
   sweepHint: '여섯 줄을 위에서 아래로, 아주 천천히',
   sweepSlower: '더 천천히, 길게',
   sweepCue: '천천히, 길게',
-  slowHint: '시간이 느려졌다 · 여섯 줄을 끝까지',
+  catchCue: '붙잡아!',
+  catchHint: '피크가 손에서 빠져나갔다 · 떠다니는 피크를 눌러 붙잡으세요',
+  strikeCue: 'ff',
+  strikeHint: '줄에 대고 · 빠르고 세게!',
+  strikeHarder: '더 빠르게, 더 세게!',
   lyric: '그대를 만난 순간',
   progressEcho: (n: number, total: number) => `${n} / ${total}`,
 };
