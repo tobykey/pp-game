@@ -28,5 +28,6 @@ npm run dev
 | `src/render/` | 캔버스 그리기, 수묵·이펙트 |
 | `src/ui/` | HTML 화면 요소(목표 문구, 운지표, 배너, 붓글씨 안내) |
 | `prototype/` | 원본 단일 HTML 프로토타입 (손맛 기준, 수정하지 않음) |
-| `docs/` | 한눈에 보기(`overview.md`), 기획(`design.md`), 곡 구성표(`song-map.md`), 시나리오(`scenario-ch0-1.md`), 아이디어, 진행 보고서 |
+| `docs/` | 한눈에 보기(`overview.md`), 기획(`design.md`), 곡 구성표(`song-map.md`), 시나리오(`scenario-ch*.md`), 전체 이야기(`story.md`), 개발 일지(`devlog.md`), 확인할 것(`questions-for-toby.md`), 아이디어, 진행 보고서 |
+| `guide/` | 플레이어용 안내서·홍보 페이지 (HTML + CSS). `npm run dev` 중이면 `http://localhost:5173/guide/` |
 | `assets/` | 원곡 MR·악보 (로컬 전용, 저장소에 올리지 않음) |
