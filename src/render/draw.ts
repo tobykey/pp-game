@@ -6,6 +6,7 @@ import { OBJ, S, cloth, fx, obj, str, thorns, view, type WorldObj } from '../wor
 import { boatScale, boatX, boatY, camX, hz, playerX, pos, sb, seaY, stringY, sx0, sx1, toScreenX } from '../world/geometry';
 import { drawBuoy, drawPainting, drawPaintingEdges, drawRock, drawThorn, drawThornGlow } from './chapter1Art';
 import { figure } from './figure';
+import { drawCounterWaves, drawLights, drawLyric, drawWhite, hopeSailPatches } from './chapter3Art';
 import { drawBurst, drawColumn, drawFallingRain, drawFrozenRain, drawGuardWaves, drawHeavyPick, drawShield, drawSlowmo } from './chapter2Art';
 import { clamp, lerp, rand } from '../util/math';
 import { beatPos, spb } from '../world/rhythm';
@@ -43,6 +44,7 @@ export function draw() {
   ctx.beginPath(); ctx.moveTo(0, hz() + 2); ctx.lineTo(W, hz() + 2); ctx.stroke();
   OBJ.filter(o => o.kind === 'isle').forEach(drawIsle);
   OBJ.filter(o => o.kind === 'painting').forEach(drawPainting);
+  drawLights();
   // sea strokes — 가까운 물결일수록 빨리 지나간다
   ctx.strokeStyle = INK; ctx.lineCap = 'round';
   for (const s of backdrop.sea) {
@@ -67,6 +69,8 @@ export function draw() {
   drawCloth();
   drawBoat(acc);
   drawShield();
+  drawCounterWaves();
+  drawLyric();
   drawGuardWaves();
   drawMist();
   drawFallingRain();
@@ -136,6 +140,7 @@ export function draw() {
   drawBurst();
   drawHeavyPick();
   ctx.restore();
+  drawWhite();
   // 눈뜸: 눈을 감은 어둠
   if (S.black > 0.001) { ctx.globalAlpha = S.black; ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
 }
@@ -302,6 +307,8 @@ function drawBoat(acc: string) {
     ctx.beginPath(); ctx.moveTo(mx + 2, -122); ctx.quadraticCurveTo(mx + 100 * p, -78, mx + 64 * p, -20); ctx.stroke();
     ctx.strokeStyle = INK; ctx.lineWidth = 1.2;
     for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(mx, -128 + k * 27); ctx.lineTo(mx + (60 + 20 * Math.sin(k)) * p, -128 + k * 29); ctx.stroke(); }
+    // 희망의 돛: 여섯 조각을 기웠다 (빛나는 조각 수 = F 폭발 게이지)
+    if (S.hopeSail) hopeSailPatches(mx, p);
   }
   // mast
   ctx.strokeStyle = INK; ctx.lineCap = 'round'; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(mx, -6); ctx.lineTo(mx, -132); ctx.stroke();
@@ -325,11 +332,17 @@ function drawBoat(acc: string) {
   // 노
   ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-70, -16); ctx.lineTo(-104 + S.wobble * 80, 16); ctx.stroke();
   // 그 사람: 뱃머리에 누워 있다. 한 손이 내 쪽으로 뻗어 있다 (복선 1)
-  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(74, -13, 7, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(46, -9, 26, 7, -0.04, 0, Math.PI * 2); ctx.fill();
+  // 겉옷을 풀어 돛에 준 뒤에는 몸이 가늘어지고 옅어지며, 아주 조금 떤다 (복선 7 회수)
+  const shiver = S.bare ? Math.sin(S.t * 31) * 0.5 : 0;
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(74, -13 + shiver, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = S.bare ? INK_SOFT : INK;
+  ctx.beginPath(); ctx.ellipse(46, -9 + shiver, S.bare ? 24 : 26, S.bare ? 5 : 7, -0.04, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = INK;
   ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.lineCap = 'round';
   // 자세는 내가 보지 않을 때 바뀐다: 0 내 쪽으로 뻗은 손, 1 가슴에 얹은 손, 2 뱃전 아래로 늘어진 손
-  const arm = ([[36, -26, 12, -22], [54, -22, 47, -15], [40, -4, 22, -2]] as const)[S.pose] ?? [36, -26, 12, -22];
+  let arm: readonly number[] = ([[36, -26, 12, -22], [54, -22, 47, -15], [40, -4, 22, -2]] as const)[S.pose] ?? [36, -26, 12, -22];
+  // 가시를 받는 손: 날아온 가시를 향해 손이 아주 조금 들린다 (잠결의 움직임처럼 짧게)
+  if (S.catchT > 0) { const k = Math.sin(Math.PI * S.catchT); arm = [arm[0] + 6 * k, arm[1] - 22 * k, arm[2] + 34 * k, arm[3] - 30 * k]; }
   ctx.beginPath(); ctx.moveTo(62, -14); ctx.quadraticCurveTo(arm[0], arm[1], arm[2], arm[3]); ctx.stroke();
   ctx.beginPath(); ctx.arc(arm[2] - 2, arm[3], 2.6, 0, Math.PI * 2); ctx.fill();
   // 손목의 가는 금 (가시를 삼킨 흔적)
@@ -337,6 +350,8 @@ function drawBoat(acc: string) {
     ctx.strokeStyle = 'rgba(234,230,222,.85)'; ctx.lineWidth = 0.7;
     const hx = arm[2] + 4, hy = arm[3];
     ctx.beginPath(); ctx.moveTo(hx - 1, hy - 2.5); ctx.lineTo(hx + 1, hy - 0.5); ctx.lineTo(hx - 0.5, hy + 0.8); ctx.lineTo(hx + 1.2, hy + 2.6); ctx.stroke();
+    // 금이 팔꿈치까지 번졌다 (가시를 둘 삼킨 뒤)
+    if (S.crack > 1) { ctx.beginPath(); ctx.moveTo(hx + 1.2, hy + 2.6); ctx.lineTo(hx + 8, hy + 1); ctx.lineTo(hx + 14, hy + 3); ctx.lineTo(hx + 22, hy + 1); ctx.lineTo(hx + 30, hy + 2); ctx.stroke(); }
     ctx.strokeStyle = INK; ctx.lineWidth = 3;
   }
   // 핫핑크 띠. 천 조각을 얻을 때마다 조금씩 짧아진다 (복선 7)
@@ -506,7 +521,9 @@ function drawBeatGuide(cx: number, cy: number, acc: string) {
     const ph = ((beatPos() % 1) + 1) % 1;
     const r = 44 + 70 * (1 - ph);
     // 노란 빗줄기가 곧 덮칠 때는 원이 노랗게 (팜뮤트 가드 신호)
-    ctx.save(); ctx.strokeStyle = S.guardCue ? '#e0b800' : S.groove === 'heart' ? INK : acc; ctx.lineWidth = (S.guardCue ? 5 : 3) + 3 * ph;
+    // 곧 덮칠 파도가 있으면: 노랑 = 가드(Shift), 파랑 = 카운터(세게)
+    const cueCol = S.guardCue ? '#e0b800' : S.counterCue ? '#2f6bff' : null;
+    ctx.save(); ctx.strokeStyle = cueCol ?? (S.groove === 'heart' ? INK : acc); ctx.lineWidth = (cueCol ? 5 : 3) + 3 * ph;
     ctx.globalAlpha = 0.2 + 0.7 * ph * ph;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
     // 박이 울린 순간: 도장 테두리가 번진다

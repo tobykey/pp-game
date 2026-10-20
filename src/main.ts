@@ -11,7 +11,9 @@ import { BRUSH_CURSOR } from './render/pick';
 import { fastForward0 } from './story/chapter0';
 import { fastForward1 } from './story/chapter1';
 import { fastForward2 } from './story/chapter2';
+import { fastForward3 } from './story/chapter3';
 import { guardWaves } from './render/chapter2Art';
+import { counterWaves } from './render/chapter3Art';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
 import { initMenu } from './ui/menu';
@@ -57,6 +59,7 @@ function start(step: StepId) {
   fastForward0(step);
   fastForward1(step);
   fastForward2(step);
+  fastForward3(step);
   resolveChord();
   go(step);
 }
@@ -64,4 +67,4 @@ document.querySelector('#go')!.addEventListener('click', () => start((jump.value
 cont.addEventListener('click', () => start(saved!));
 
 // 자동 테스트용 (개발 서버에서만)
-if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves } });
+if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves } });

@@ -234,7 +234,7 @@ export function drawThorn(o: WorldObj) {
 
 /** 다 버틴 순간: 어두워진 세상 위로 가시만 핑크로 빛난다 (C로 뽑으라는 신호) */
 export function drawThornGlow() {
-  const o = OBJ.find(x => x.kind === 'thorn');
+  const o = OBJ.find(x => x.kind === 'thorn' && !x.hidden && !x.gone);
   if (!o || o.hidden || o.gone || S.dim < 0.02) return;
   const p = pos(o), pulse = 0.7 + 0.3 * Math.sin(S.t * 6);
   ctx.save(); ctx.translate(p.x, p.y);

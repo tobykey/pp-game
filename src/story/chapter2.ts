@@ -13,7 +13,7 @@ import { cv } from '../render/canvas';
 import { flyPiece, splash } from '../render/effects';
 import { INK, VOLT, reduceMotion } from '../render/palette';
 import { guardWaves } from '../render/chapter2Art';
-import { chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
+import { chapterCard, cue, ink, setProgress, unlock } from '../ui/hud';
 import { boatX, boatY, pos, toScreenX } from '../world/geometry';
 import { judgeBeat } from '../world/judge';
 import { grooveBeat, grooveBeatPos, setBarChord, setTempo } from '../world/rhythm';
@@ -259,14 +259,13 @@ const end: StepHandler = {
   enter() {
     S.nextChord = null;
     setTempo(130, 'chorus');
-    setBarChord(bar => (['Db', 'Eb', 'Cm', 'Db'] as ChordId[])[bar % 4]);
+    setBarChord(() => 'Db');
     S.cruise = 0.08;
-    chapterCard('CHAPTER 3', '돛', '후렴 2 — 준비 중');
   },
-  update(dt, el) {
+  update(_dt, el) {
     S.vel = Math.min(S.vel, 0.12);
-    if (el > 8) { S.cruise = Math.max(0, S.cruise - dt * 0.05); once('calm', true, () => setTempo(65, 'heart')); }
-    once('obj', el > 4, () => setObjective('챕터 3 · 돛 — 준비 중'));
+    // D♭ 폭발의 여운이 가라앉으면 챕터 3으로
+    if (el > 2.5) goLater('c3stall', el, 0);
   },
 };
 

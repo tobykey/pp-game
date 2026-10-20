@@ -86,7 +86,7 @@ export function update(dt: number) {
   S.sail = ease(S.sail, S.sailT, 2.4, dt);
   S.scrap = ease(S.scrap, cloth.tied ? 1 : 0, 1.6, dt);
   // 조각이 늘 때마다 그 사람의 띠가 짧아진다 (복선 7)
-  if (S.pieces > 0) S.sashT = Math.max(0.25, 0.8 - 0.09 * (S.pieces - 1));
+  if (S.pieces > 0) S.sashT = Math.max(0.25, 0.8 - 0.09 * (Math.min(S.pieces, 4) - 1));
   S.sash = ease(S.sash, S.sashT, 0.8, dt);
   fx.flyers = fx.flyers.filter(f => S.t - f.t < f.dur + 0.1);
   S.fog = ease(S.fog, S.fogT, 1.2, dt);
@@ -99,4 +99,8 @@ export function update(dt: number) {
   S.rainFall = ease(S.rainFall, S.rainFallT, 1.5, dt);
   S.shield = Math.max(0, S.shield - dt * 1.8);
   S.burst = Math.max(0, S.burst - dt * 0.9);
+  S.catchT = Math.max(0, S.catchT - dt * 0.8);
+  S.white = ease(S.white, S.whiteT, 2.2, dt);
+  S.lyric = ease(S.lyric, S.lyricT, 0.8, dt);
+  if (S.bare) S.sashT = 0;
 }

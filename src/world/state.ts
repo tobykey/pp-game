@@ -4,6 +4,7 @@ import type { ModeId } from '../data/modes';
 import { OBJECTS } from '../data/chapter0';
 import { OBJECTS1 } from '../data/chapter1';
 import { OBJECTS2 } from '../data/chapter2';
+import { OBJECTS3 } from '../data/chapter3';
 import type { ObjDef } from '../data/defs';
 import type { StepId } from '../data/steps';
 import { seeded } from '../util/math';
@@ -140,6 +141,22 @@ export const S = {
   hx: 0, hy: 0, pvx: 0, pvy: 0,
   /** 슬로모션이 풀리는 순간의 폭발 (1 → 0) */
   burst: 0,
+
+  // 챕터 3
+  /** 희망의 돛: 여섯 조각을 기워 만든 돛 */
+  hopeSail: false,
+  /** F 폭발 게이지 = 돛의 조각 중 형광으로 빛나는 수 (0~6) */
+  glow: 0,
+  /** 곧 파란 파도가 덮친다 (박 안내 원이 파랗게) */
+  counterCue: false,
+  /** 그 사람의 띠와 겉옷이 사라졌다 (모자란 두 조각이 되었다) */
+  bare: false,
+  /** 가시를 받는 손 (1 → 0) */
+  catchT: 0,
+  /** 화면을 덮는 하얀 빛 (보여 주지 않는 장면을 가린다) */
+  white: 0, whiteT: 0,
+  /** 돛에 번지는 가사 */
+  lyric: 0, lyricT: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }
@@ -183,7 +200,7 @@ export interface WorldObj extends ObjDef {
   seen: boolean;
 }
 
-export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1, ...OBJECTS2].map(o => ({
+export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1, ...OBJECTS2, ...OBJECTS3].map(o => ({
   ...o, vis: 0, detail: 0, found: false, lit: 0, res: 0, pts: [], gone: false, play: 0, look: 0, seen: false,
 }));
 OBJ.filter(o => o.kind === 'isle').forEach(o => {
