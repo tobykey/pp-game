@@ -6,6 +6,7 @@ import { OBJECTS1 } from '../data/chapter1';
 import { OBJECTS2 } from '../data/chapter2';
 import { OBJECTS3 } from '../data/chapter3';
 import { OBJECTS4 } from '../data/chapter4';
+import { OBJECTS5 } from '../data/chapter5';
 import type { ObjDef } from '../data/defs';
 import type { StepId } from '../data/steps';
 import { seeded } from '../util/math';
@@ -178,6 +179,24 @@ export const S = {
   tug: -1,
   /** D.S. 표지가 빛나는 정도 */
   dsT: 0, ds: 0,
+
+  // 챕터 5
+  /** 제자리표(♮)를 얻었다: 물그림자에 두 사람이 비친다, 오선에 ♮ */
+  natural: false,
+  /** 둘러보기를 놓아도 배 쪽으로 돌아오지 않는다 (시점 맞추기 퍼즐) */
+  lookHold: false,
+  /** 멈춘 비를 지금 배 근처로 옮겨 그리는 거리 (D.S.: 같은 순간으로 돌아옴) */
+  rainShift: 0,
+  /** 자리가 바뀐다: 0 = 내가 기타를 안고 그 사람이 누움, 1 = 그 사람이 기타를 안고 내가 누움 */
+  swap: 0, swapT: 0,
+  /** 뱃머리 아래 물속에 가라앉아 빛나는, 내가 뽑은 ♭ 셋 */
+  sunk: 0, sunkT: 0,
+  /** 쉼표(침묵) 퍼즐: 차오른 정도 (음수면 꺼짐), 깨진 순간 */
+  rest: -1, restCrackT: -9,
+  /** 마지막 가시 B♭이 심장 박동에 맞춰 빛난다 */
+  bflat: 0, bflatT: 0,
+  /** 두 번째 심장 소리의 크기 (기본 1) */
+  heart2: 1,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }
@@ -221,7 +240,7 @@ export interface WorldObj extends ObjDef {
   seen: boolean;
 }
 
-export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1, ...OBJECTS2, ...OBJECTS3, ...OBJECTS4].map(o => ({
+export const OBJ: WorldObj[] = [...OBJECTS, ...OBJECTS1, ...OBJECTS2, ...OBJECTS3, ...OBJECTS4, ...OBJECTS5].map(o => ({
   ...o, vis: 0, detail: 0, found: false, lit: 0, res: 0, pts: [], gone: false, play: 0, look: 0, seen: false,
 }));
 OBJ.filter(o => o.kind === 'isle').forEach(o => {

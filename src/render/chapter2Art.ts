@@ -36,7 +36,7 @@ export function drawFrozenRain() {
   fermata(W * 0.8, view.H * 0.165, 0.7, 0.55 * a);
   ctx.save(); ctx.strokeStyle = INK; ctx.lineCap = 'round';
   for (const d of drops) {
-    const x = toScreenX(d.wx);
+    const x = toScreenX(d.wx + S.rainShift);
     if (x < -10 || x > W + 10) continue;
     const y = hz() + (sb() - hz()) * d.ry;
     // 가까이 퍼지는 파동(팜뮤트)이 지나가면 그 빗방울이 울린다 (밝게 번짐)

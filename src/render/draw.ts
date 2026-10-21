@@ -14,6 +14,7 @@ import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 import { drawCut } from './cutscene';
 import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
+import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewrite, drawSunk, drawTruth, meLying, personWithGuitar, secondReflection } from './chapter5Art';
 
 /** 그 사람의 색. 띠와 천 조각이 같은 색이어야 한다 (복선 7) */
 const PINK = '#ff2a7f';
@@ -83,11 +84,18 @@ export function draw() {
     else if (o.kind === 'column') drawColumn(o);
     else if (o.kind === 'relic') drawRelic(o);
     else if (o.kind === 'sign') drawSign(o);
+    else if (o.kind === 'answer') drawAnswer(o);
   });
+  drawCreepers();
   drawCloth();
   drawClashWall();
   drawGrounded();
   drawBoat(acc);
+  drawSunk();
+  drawNatural();
+  drawTruth();
+  drawQuestion();
+  drawRewrite();
   drawShield();
   drawCounterWaves();
   drawLyric();
@@ -160,6 +168,7 @@ export function draw() {
   if (S.reveal < 1) { ctx.globalAlpha = 1 - S.reveal; ctx.drawImage(backdrop.paper!, -40, -40, W + 80, H + 80); ctx.globalAlpha = 1; }
   drawSlowmo();
   drawStrings(acc);
+  drawRest();
   drawBurst();
   drawHeavyPick();
   ctx.restore();
@@ -279,6 +288,8 @@ function drawRefl(o: WorldObj) {
   ctx.save(); ctx.translate(p.x - 14 * s + Math.sin(S.t * 2) * 2, p.y); ctx.scale(s, -s);
   ctx.globalAlpha = v * 0.55; ctx.fillStyle = INK_SOFT; ctx.strokeStyle = INK_SOFT;
   // one seated figure holding a guitar. The bow sleeper casts nothing.
+  // 제자리표(♮)를 얻은 뒤에는 원래 모습: 두 사람이 비친다 (복선 6 회수)
+  if (S.natural) secondReflection();
   figure();
   ctx.restore(); ctx.globalAlpha = 1;
 }
@@ -352,12 +363,16 @@ function drawBoat(acc: string) {
     ctx.globalAlpha = 1;
   }
   // 나: 배 뒤쪽에 앉아 기타를 안고 있다
-  ctx.save(); ctx.translate(-76, -6); ctx.fillStyle = INK; ctx.strokeStyle = INK; figure(); ctx.restore();
+  ctx.globalAlpha = 1 - S.swap; ctx.save(); ctx.translate(-76, -6); ctx.fillStyle = INK; ctx.strokeStyle = INK; figure(); ctx.restore();
+  // 자리가 바뀐다 (챕터 5): 누워 있는 건 나, 기타를 안고 머리맡에 앉은 건 그 사람
+  if (S.swap > 0.01) { ctx.globalAlpha = S.swap; meLying(); personWithGuitar(); }
+  ctx.globalAlpha = 1;
   // 노
   ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-70, -16); ctx.lineTo(-104 + S.wobble * 80, 16); ctx.stroke();
   // 그 사람: 뱃머리에 누워 있다. 한 손이 내 쪽으로 뻗어 있다 (복선 1)
   // 겉옷을 풀어 돛에 준 뒤에는 몸이 가늘어지고 옅어지며, 아주 조금 떤다 (복선 7 회수)
   const shiver = S.bare ? Math.sin(S.t * 31) * 0.5 : 0;
+  ctx.save(); ctx.globalAlpha = 1 - S.swap;
   ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(74, -13 + shiver, 7, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = S.bare ? INK_SOFT : INK;
   ctx.beginPath(); ctx.ellipse(46, -9 + shiver, S.bare ? 24 : 26, S.bare ? 5 : 7, -0.04, 0, Math.PI * 2); ctx.fill();
@@ -384,6 +399,7 @@ function drawBoat(acc: string) {
   const sl = S.sash;
   ctx.strokeStyle = PINK; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(54, -15); ctx.quadraticCurveTo(44, -4, 54 - 24 * sl, -12 + 4 * (1 - sl)); ctx.stroke();
+  ctx.restore();
   // hull: one loaded brush stroke
   ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(104, -10); ctx.quadraticCurveTo(60, 4, 0, 0); ctx.quadraticCurveTo(-60, 4, -100, -14);
   ctx.quadraticCurveTo(-80, 18, 0, 20); ctx.quadraticCurveTo(78, 18, 104, -10); ctx.fill();
@@ -516,7 +532,14 @@ function drawScore(acc: string) {
       x += t.fly.vx * e; y += t.fly.vy * e + 260 * e * e; rot = t.fly.rot * e; a = 1 - e / 1.6; col = acc;
     }
     ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = a; ctx.fillStyle = col; ctx.fillText('♭', 0, 0); ctx.restore();
+    // 마지막 가시 B♭: 심장 박동에 맞춰 핑크로 빛난다 (챕터 5 끝)
+    if (i === 0 && S.bflat > 0.01) {
+      ctx.save(); ctx.globalAlpha = S.bflat * (0.5 + 0.5 * S.pulse); ctx.shadowColor = PINK; ctx.shadowBlur = 18; ctx.fillStyle = PINK;
+      ctx.translate(x, y); ctx.scale(1 + 0.25 * S.pulse, 1 + 0.25 * S.pulse); ctx.fillText('♭', 0, 0); ctx.restore();
+    }
   });
+  // 제자리표: 얻은 ♮이 오선 위에 놓인다
+  if (S.natural) { ctx.save(); ctx.fillStyle = PINK; ctx.fillText('♮', kx + 14 + 4 * 15 + 4, ky + 2 * gap + 8); ctx.restore(); }
   const left = thorns.filter(t => !t.gone).length;
   ctx.globalAlpha = 0.65; ctx.fillStyle = INK; ctx.font = `10px ${MONO}`; ctx.textAlign = 'left';
   ctx.fillText(left ? `가시 ${left}` : '가시 없음', kx + w + 8, ky + gap * 2.6); ctx.globalAlpha = 1;

@@ -38,9 +38,9 @@ export function heart(t: number) {
 }
 
 /** 조금 어긋난 곳에서 아주 희미하게 뛰는 두 번째 심장 (뱃머리 쪽, 오른쪽에서) */
-export function heartFar(t: number) {
-  thump(t, 58, 38, 0.18, 0.09, 0.55);
-  thump(t + 0.16, 52, 36, 0.14, 0.05, 0.55);
+export function heartFar(t: number, v = 1) {
+  thump(t, 58, 38, 0.18, 0.09 * v, 0.55);
+  thump(t + 0.16, 52, 36, 0.14, 0.05 * v, 0.55);
 }
 
 export function kick(t: number, v = 1) { thump(t, 150, 45, 0.32, 0.95 * v); hiss(t, 'highpass', 3000, 0.012, 0.15 * v); }

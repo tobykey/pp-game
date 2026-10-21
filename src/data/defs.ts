@@ -10,7 +10,7 @@ export interface StepDef<I extends string = string> {
   mode: ModeId;
 }
 
-export type ObjKind = 'isle' | 'lamp' | 'refl' | 'whisper' | 'rock' | 'painting' | 'buoy' | 'thorn' | 'column' | 'relic' | 'sign';
+export type ObjKind = 'isle' | 'lamp' | 'refl' | 'whisper' | 'rock' | 'painting' | 'buoy' | 'thorn' | 'column' | 'relic' | 'sign' | 'answer';
 
 /** 기억 그림의 장면 */
 export type PaintingScene = 'room' | 'stage' | 'rain' | 'meet';
@@ -43,4 +43,6 @@ export interface ObjDef {
   /** 마른 바다에 묻힌 것: 모양과 이름 */
   relic?: 'score' | 'case' | 'pick';
   label?: string;
+  /** 챕터 5: 같은 기억을 그 사람 쪽에서 본 그림 (액자 안에 그 사람, 가장자리에 나) */
+  other?: boolean;
 }

@@ -268,7 +268,9 @@ const after: StepHandler = {
     once('ink1', el > 2, () => ink(TEXT4.after1));
     once('ink2', el > 6.5, () => ink(TEXT4.after2));
     if (el > 8) S.cruise = Math.max(0, S.cruise - dt * 0.02);
-    once('end', el > 11, () => { ink(null); setObjective(TEXT4.nextChapter); });
+    // D.S.: 세뇨로 돌아간다 → 챕터 5
+    once('inkOff', el > 11, () => ink(null));
+    if (el > 12.5) goLater('c5return', el, 0);
   },
 };
 

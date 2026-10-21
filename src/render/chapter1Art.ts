@@ -5,6 +5,7 @@ import { ctx } from './canvas';
 import { BRUSH } from './palette';
 import { figure } from './figure';
 import { footprints, meetScene, segno } from './chapter2Art';
+import { otherScene } from './chapter5Art';
 import { INK, INK_SOFT, PAPER } from './palette';
 
 /** 그 사람의 색. 액자 밖에서만 보인다 (둘러본 사람만) */
@@ -32,13 +33,14 @@ export function drawPainting(o: WorldObj) {
   ctx.save(); ctx.beginPath(); ctx.rect(f.x + 6, f.y + 6, f.w - 12, f.h - 12); ctx.clip();
   ctx.globalAlpha = a; ctx.fillStyle = INK; ctx.strokeStyle = INK;
   const P = (u: number, v: number) => [f.x + u * f.w, f.y + v * f.h] as const;
-  if (o.scene === 'room') roomScene(P, f, o.play);
+  if (o.other) otherScene(P, f, o.scene!, o.play);
+  else if (o.scene === 'room') roomScene(P, f, o.play);
   else if (o.scene === 'stage') stageScene(P, f, o.play, o.gone);
   else if (o.scene === 'meet') meetScene(P, f, o.play);
   else rainScene(P, f);
   ctx.restore();
   // 첫 만남의 그림이 다 움직이고 나면 액자 모서리에 세뇨가 찍힌다
-  if (o.scene === 'meet' && o.play >= 1) segno(f.x + f.w - 22, f.y + 26, Math.min(1, a));
+  if (o.scene === 'meet' && !o.other && o.play >= 1) segno(f.x + f.w - 22, f.y + 26, Math.min(1, a));
   ctx.restore(); ctx.globalAlpha = 1;
 }
 

@@ -13,9 +13,12 @@ import { fastForward1 } from './story/chapter1';
 import { fastForward2 } from './story/chapter2';
 import { fastForward3 } from './story/chapter3';
 import { fastForward4 } from './story/chapter4';
+import { fastForward5 } from './story/chapter5';
+import { clearSeen, loadSeen } from './world/memory';
 import { guardWaves } from './render/chapter2Art';
 import { counterWaves } from './render/chapter3Art';
 import { tickCut } from './render/cutscene';
+import { test5 } from './render/chapter5Art';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
 import { initMenu } from './ui/menu';
@@ -58,11 +61,14 @@ function start(step: StepId) {
   cv.style.cursor = BRUSH_CURSOR;
   document.querySelector<HTMLElement>('#start')!.hidden = true;
   setTempo(65, 'heart');
+  // 처음부터 하면 둘러본 기록도 새로, 중간부터면 저장된 기록을 되살린다 (챕터 5 기억 테스트)
+  if (step === 'wake') clearSeen(); else loadSeen();
   fastForward0(step);
   fastForward1(step);
   fastForward2(step);
   fastForward3(step);
   fastForward4(step);
+  fastForward5(step);
   resolveChord();
   go(step);
 }
@@ -70,4 +76,4 @@ document.querySelector('#go')!.addEventListener('click', () => start((jump.value
 cont.addEventListener('click', () => start(saved!));
 
 // 자동 테스트용 (개발 서버에서만)
-if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves } });
+if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves, test5 } });

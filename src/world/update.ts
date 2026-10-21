@@ -7,6 +7,7 @@ import { OBJ, S, cloth, fx, str, view } from './state';
 import { camX, pos, toScreenX } from './geometry';
 import { tickRhythm } from './rhythm';
 import { updateBoat } from './rowing';
+import { markSeen } from './memory';
 
 const ease = (v: number, target: number, rate: number, dt: number) => v + (target - v) * Math.min(1, dt * rate);
 
@@ -22,8 +23,8 @@ export function update(dt: number) {
 
   // 둘러보기: ← → 키를 누르는 동안 옆을 보고, 떼면 천천히 배 쪽으로 돌아온다
   S.dragLook = S.lookable && S.lookDir !== 0;
-  if (S.dragLook) S.look = Math.max(-0.65, Math.min(0.65, S.look + S.lookDir * dt * 1.1));
-  else S.look = ease(S.look, 0, 1.6, dt);
+  if (S.dragLook) S.look = Math.max(-0.65, Math.min(0.65, S.look + S.lookDir * dt * (S.lookHold ? 0.45 : 1.1)));
+  else if (!S.lookHold) S.look = ease(S.look, 0, 1.6, dt);
   // 그 사람의 자세는 내가 보지 않을 때(배가 화면 밖으로 비켜났을 때) 바뀐다 (복선: 잠든 게 아니었다)
   if (S.lookable && Math.abs(S.look) > 0.55 && S.pose === 0) S.pose = 1;
 
@@ -67,7 +68,7 @@ export function update(dt: number) {
         const onScreen = fx0 > view.W * 0.06 && fx0 < view.W * 0.94;
         // 실제로 ← → 키로 둘러보는 동안에만 드러난다 (배가 다가가며 저절로 지나치는 것으로는 안 보임)
         o.look = Math.max(0, Math.min(1, o.look + dt * (onScreen && S.dragLook ? 0.9 : -0.25)));
-        if (o.look > 0.75) o.seen = true;
+        if (o.look > 0.75 && !o.seen) { o.seen = true; markSeen(o.id); }
       }
       // 그림의 윤곽은 장면에 들어오면 늘 희미하게 남는다
       o.vis = Math.max(o.vis, 0.35);
@@ -108,6 +109,9 @@ export function update(dt: number) {
   S.storm = ease(S.storm, S.stormT, 0.8, dt);
   S.press = ease(S.press, S.pressT, 1.2, dt);
   S.ds = ease(S.ds, S.dsT, 0.7, dt);
+  S.swap = ease(S.swap, S.swapT, 0.35, dt);
+  S.sunk = ease(S.sunk, S.sunkT, 0.8, dt);
+  S.bflat = ease(S.bflat, S.bflatT, 1, dt);
   S.lyric = ease(S.lyric, S.lyricT, 0.8, dt);
   if (S.bare) S.sashT = 0;
 }
