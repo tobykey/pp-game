@@ -13,6 +13,7 @@ import { beatPos, spb } from '../world/rhythm';
 import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 import { drawCut } from './cutscene';
+import { mark, profStart } from './prof';
 import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
 import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewrite, drawSunk, drawTruth, meLying, personWithGuitar, secondReflection } from './chapter5Art';
 
@@ -22,7 +23,9 @@ const wrap = (v: number, lo: number, hi: number) => { const p = hi - lo; return 
 
 export function draw() {
   const { W, H } = view;
+  profStart();
   ctx.drawImage(backdrop.paper!, 0, 0, W, H);
+  mark('paper');
   ctx.save();
   if (S.shake > 0.3) ctx.translate(rand(-S.shake, S.shake), rand(-S.shake, S.shake));
   const acc = MODES[S.mode].accent;
@@ -55,10 +58,12 @@ export function draw() {
   ctx.restore();
   ctx.strokeStyle = 'rgba(23,20,15,.35)'; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(0, hz() + 2); ctx.lineTo(W, hz() + 2); ctx.stroke();
+  mark('mountains');
   drawStorm();
   OBJ.filter(o => o.kind === 'isle').forEach(drawIsle);
   OBJ.filter(o => o.kind === 'painting').forEach(drawPainting);
   drawLights();
+  mark('isles+paintings+lights');
   // sea strokes — 가까운 물결일수록 빨리 지나간다
   ctx.strokeStyle = INK; ctx.lineCap = 'round';
   for (const s of backdrop.sea) {
@@ -68,12 +73,16 @@ export function draw() {
     ctx.beginPath(); ctx.moveTo(xx, s.y); ctx.quadraticCurveTo(xx + s.len / 2, s.y - 1.6 * s.w, xx + s.len, s.y); ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  mark('sea');
   drawDrySea();
   drawTrails();
   drawCrackTexts();
+  mark('dry sea');
   drawRipples();
+  mark('ripples');
   drawFrozenRain();
   drawRoad();
+  mark('frozen rain+road');
   OBJ.forEach(o => {
     if (o.kind === 'lamp') drawLamp(o);
     else if (o.kind === 'refl') drawRefl(o);
@@ -86,16 +95,19 @@ export function draw() {
     else if (o.kind === 'sign') drawSign(o);
     else if (o.kind === 'answer') drawAnswer(o);
   });
+  mark('objects');
   drawCreepers();
   drawCloth();
   drawClashWall();
   drawGrounded();
   drawBoat(acc);
+  mark('boat');
   drawSunk();
   drawNatural();
   drawTruth();
   drawQuestion();
   drawRewrite();
+  mark('ch5 text');
   drawShield();
   drawCounterWaves();
   drawLyric();
@@ -103,6 +115,7 @@ export function draw() {
   drawGuardWaves();
   drawMist();
   drawFallingRain();
+  mark('mist+rain+waves');
   // speed lines
   for (const l of fx.lines) {
     ctx.globalAlpha = Math.min(1, l.life); ctx.strokeStyle = l.c; ctx.lineWidth = l.c === INK ? 2.5 : 4;
@@ -121,12 +134,15 @@ export function draw() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  mark('lines+particles');
   // 기타 침묵: 세상의 색이 빠지고 조금 어두워진다 (그 사람의 핑크도 사라진다)
   if (S.hush > 0.01) {
+    // 줄과 악보는 이 뒤에 그리므로, 그 위(바다까지)만 색을 뺀다 (화면 전체를 칠하면 무거움)
+    const hh = sb() + 60;
     ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = S.hush; ctx.fillStyle = '#808080';
-    ctx.fillRect(-40, -40, W + 80, H + 80);
+    ctx.fillRect(-40, -40, W + 80, hh + 40);
     ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.22 * S.hush; ctx.fillStyle = '#78736b';
-    ctx.fillRect(-40, -40, W + 80, H + 80);
+    ctx.fillRect(-40, -40, W + 80, hh + 40);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   }
   drawPaintingEdges();
@@ -157,17 +173,20 @@ export function draw() {
     const since = (((beatPos() % 1) + 1) % 1) * spb();
     const env = since < 0.06 ? since / 0.06 : Math.exp(-(since - 0.06) * 4);
     if (env > 0.01) {
-      const g = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.45, Math.max(W, H) * 0.75);
-      g.addColorStop(0, 'rgba(20,18,15,0)'); g.addColorStop(1, 'rgba(20,18,15,1)');
-      ctx.globalAlpha = (reduceMotion ? 0.04 : 0.11) * env; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+      vignette((reduceMotion ? 0.04 : 0.11) * env);
     }
   }
+  mark('overlays');
   drawScore(acc);
   drawDyn(acc);
+  mark('score+dyn');
   // 눈뜸: 하얀 빛 속에서 세상이 떠오른다
   if (S.reveal < 1) { ctx.globalAlpha = 1 - S.reveal; ctx.drawImage(backdrop.paper!, -40, -40, W + 80, H + 80); ctx.globalAlpha = 1; }
   drawSlowmo();
   drawStrings(acc);
+  mark('strings');
+  // 쉼표가 차오를수록 화면 가장자리가 어두워진다 (침묵의 긴장)
+  if (S.rest > 0) vignette(0.5 * S.rest);
   drawRest();
   drawBurst();
   drawHeavyPick();
@@ -176,6 +195,7 @@ export function draw() {
   // 눈뜸: 눈을 감은 어둠
   if (S.black > 0.001) { ctx.globalAlpha = S.black; ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   drawCut();
+  mark('end overlays+cut');
 }
 
 function drawIsle(o: WorldObj) {
@@ -429,8 +449,19 @@ function drawFlyers() {
 }
 
 const mist = [...Array(8)].map((_, i) => ({ u: Math.random(), v: rand(0.05, 0.85), r: rand(0.18, 0.38), sp: rand(0.004, 0.012) * (i % 2 ? 1 : -1) }));
+/** 안개·비네트처럼 넓고 부드러운 층은 화면의 1/4 해상도로 따로 그린 뒤 늘려 붙인다 (부드러운 그림이라 티가 안 나고, 그리는 양은 1/16) */
+const LO = 4;
+function lowRes(c: HTMLCanvasElement) {
+  const w = Math.ceil(view.W / LO), h = Math.ceil(view.H / LO);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const g = c.getContext('2d')!;
+  g.setTransform(1 / LO, 0, 0, 1 / LO, 0, 0); g.clearRect(0, 0, view.W, view.H);
+  return g;
+}
+const mistCv = document.createElement('canvas');
 function drawMist() {
-  const { W, H } = view;
+  if (S.fog < 0.01) { for (const m of mist) m.u += m.sp * 0.016; return; }
+  const { W, H } = view, g = lowRes(mistCv);
   for (const m of mist) {
     // 안개는 천천히 흘러간다. 화면 밖으로 완전히 나간 뒤에야 반대편으로 돌아온다 (순간 이동이 보이지 않게)
     // (이전 식은 매 프레임 화면 너비의 20%씩 건너뛰어 안개가 깜빡였다)
@@ -440,10 +471,28 @@ function drawMist() {
     // 배 바로 위에 짙은 안개가 앉으면 주인공이 사라져 보여서, 배 근처 안개는 조금 옅게
     const dist = Math.hypot((x - boatX()) / W, (y - boatY()) / H);
     const near = 0.5 + 0.5 * clamp((dist - 0.1) / 0.25, 0, 1);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(234,230,222,${0.62 * S.fog * near})`); g.addColorStop(1, 'rgba(234,230,222,0)');
-    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, `rgba(234,230,222,${0.62 * S.fog * near})`); gr.addColorStop(1, 'rgba(234,230,222,0)');
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
   }
+  // 안개가 앉는 띠(수평선 위아래)만 붙인다
+  const y0 = Math.max(0, hz() - H * 0.12), y1 = Math.min(H, sb() + H * 0.08);
+  ctx.drawImage(mistCv, 0, y0 / LO, mistCv.width, (y1 - y0) / LO, 0, y0, W, y1 - y0);
+}
+
+/** 박의 비네트: 모양은 화면 크기가 바뀔 때만 다시 그리고, 매 박에는 투명도만 바꿔 붙인다 */
+const vigCv = document.createElement('canvas');
+let vigKey = '';
+function vignette(alpha: number) {
+  const { W, H } = view, key = W + 'x' + H;
+  if (key !== vigKey) {
+    vigKey = key;
+    const g = lowRes(vigCv);
+    const gr = g.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.45, Math.max(W, H) * 0.75);
+    gr.addColorStop(0, 'rgba(20,18,15,0)'); gr.addColorStop(1, 'rgba(20,18,15,1)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  }
+  ctx.globalAlpha = alpha; ctx.drawImage(vigCv, 0, 0, W, H); ctx.globalAlpha = 1;
 }
 
 function drawStrings(acc: string) {

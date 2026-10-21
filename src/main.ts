@@ -19,6 +19,7 @@ import { guardWaves } from './render/chapter2Art';
 import { counterWaves } from './render/chapter3Art';
 import { tickCut } from './render/cutscene';
 import { test5 } from './render/chapter5Art';
+import { profReport, profReset } from './render/prof';
 import { go, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
 import { initMenu } from './ui/menu';
@@ -63,6 +64,8 @@ function start(step: StepId) {
   setTempo(65, 'heart');
   // 처음부터 하면 둘러본 기록도 새로, 중간부터면 저장된 기록을 되살린다 (챕터 5 기억 테스트)
   if (step === 'wake') clearSeen(); else loadSeen();
+  // 확인용: 주소에 ?seen 을 붙이면 모든 기억 그림의 액자 밖을 둘러본 것으로 (기억 테스트의 또렷한 쪽을 바로 볼 수 있게)
+  if (new URLSearchParams(location.search).has('seen')) OBJ.filter(o => o.kind === 'painting').forEach(o => { o.seen = true; });
   fastForward0(step);
   fastForward1(step);
   fastForward2(step);
@@ -76,4 +79,4 @@ document.querySelector('#go')!.addEventListener('click', () => start((jump.value
 cont.addEventListener('click', () => start(saved!));
 
 // 자동 테스트용 (개발 서버에서만)
-if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves, test5 } });
+if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves, test5, profReport, profReset } });

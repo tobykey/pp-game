@@ -181,7 +181,6 @@ export const test5 = {
 
 function drawPic(pic: AnswerPic, x: number, y: number, clear: boolean) {
   ctx.save(); ctx.translate(x, y);
-  if (!clear) { ctx.filter = 'blur(3px)'; }
   const col = (c: string) => clear ? c : '#9a958c';
   ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.lineCap = 'round';
   switch (pic.kind) {
@@ -217,6 +216,12 @@ function drawPic(pic: AnswerPic, x: number, y: number, clear: boolean) {
     case 'puddle':
       ctx.fillStyle = col('#7d93a8'); ctx.beginPath(); ctx.ellipse(0, 8, 24, 7, 0, 0, Math.PI * 2); ctx.fill();
       break;
+  }
+  // 본 적 없는 기억: 안개가 덮여 윤곽만 (흐림 필터는 너무 무거워서 한지 빛 안개 + 가로 붓 자국으로)
+  if (!clear) {
+    ctx.globalAlpha *= 0.62; ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(0, 0, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(154,149,140,.7)'; ctx.lineWidth = 3;
+    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(-26, k * 9); ctx.quadraticCurveTo(0, k * 9 - 4, 26, k * 9 + 1); ctx.stroke(); }
   }
   ctx.restore();
 }
@@ -256,6 +261,11 @@ export function drawQuestion() {
     ctx.font = `${Math.round(Math.min(40, W / 22))}px ${BRUSH}`; ctx.fillStyle = INK; ctx.globalAlpha = fade;
     ctx.shadowColor = 'rgba(234,230,222,1)'; ctx.shadowBlur = 10;
     ctx.fillText(shown, W / 2 + tremble, y);
+    // 답 그림이 흐릿한 까닭을 알려 준다 (그 기억의 액자 밖을 보지 않았다)
+    if (!test5.clear && n >= txt.length) {
+      ctx.font = `${Math.round(Math.min(24, W / 36))}px ${BRUSH}`; ctx.fillStyle = INK_SOFT; ctx.globalAlpha = 0.85 * fade;
+      ctx.fillText(TEXT5.testBlur, W / 2, y + 36);
+    }
     // 글을 쓰는 손끝 (핫핑크 점)
     if (n < txt.length) {
       const full = ctx.measureText(txt).width, part = ctx.measureText(shown).width;
@@ -302,6 +312,10 @@ export function drawRest() {
   // 차오른 만큼 먹으로 (아래에서 위로)
   ctx.save(); ctx.beginPath(); ctx.rect(-60, 64 - 140 * S.rest, 120, 140 * S.rest); ctx.clip();
   ctx.globalAlpha = 1; ctx.lineWidth = 16; restPath(); ctx.stroke(); ctx.restore();
+  // 남은 박: 점 여덟 개가 하나씩 찬다
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < 8; i++) { const px = -42 + i * 12, filled = i < Math.round(S.rest * 8); ctx.beginPath(); ctx.arc(px, 88, 4, 0, Math.PI * 2); if (filled) { ctx.fillStyle = INK; ctx.fill(); } else { ctx.strokeStyle = INK; ctx.lineWidth = 1.5; ctx.stroke(); } }
+  ctx.strokeStyle = INK;
   // 다 차면 형광 테두리
   if (S.rest >= 1) { ctx.globalAlpha = 0.9; ctx.strokeStyle = VOLT; ctx.lineWidth = 4; restPath(); ctx.stroke(); }
   // 긁으면 금 가며 깨진다
@@ -364,20 +378,55 @@ export const rewrite = {
   /** 새 단어가 찍힌 순간 (−1 = 아직) */
   stampT: -1,
 };
+/**
+ * 문장을 쓰기 전에, 그 사람의 손끝이 게임 내내 보아 온 안내들을 같은 자리에 차례로 다시 쓴다.
+ * 뱃머리의 손에서 글 쓰는 손끝까지 핑크 실이 이어져, 안내를 써 온 게 누구였는지 알아보게 한다
+ */
+const PRE = ['줄을 긁어 보세요', '박동에 맞춰, 아래로 · 위로', '가시 뽑기'];
+const PRE_CHAR = 0.07, PRE_HOLD = 0.75, MAIN_CHAR = 0.14;
+const preDur = (l: string) => l.length * PRE_CHAR + PRE_HOLD;
+const PRE_TOTAL = PRE.reduce((a, l) => a + preDur(l), 0);
+/** 그 사람이 문장을 다 썼는지 */
+export const rewriteWritten = () => S.t - rewrite.t0 > PRE_TOTAL + '나를 잊어 줘'.length * MAIN_CHAR + 0.6;
+/** 뱃머리 그 사람의 손 → 글 쓰는 손끝까지 핑크 실 */
+function thread(tx: number, ty: number) {
+  const s = boatScale(), hx = boatX() + 42 * s, hy = boatY() - 16 * s;
+  ctx.save(); ctx.strokeStyle = PINK; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.7; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo((hx + tx) / 2, Math.max(hy, ty) + 40, tx, ty); ctx.stroke();
+  ctx.fillStyle = PINK; ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(tx, ty, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
 export function drawRewrite() {
   if (!rewrite.on) return;
   const { W } = view, y = seaY(0.88), size = Math.round(Math.min(60, W / 14));
   ctx.save(); ctx.font = `${size}px ${BRUSH}`; ctx.textBaseline = 'alphabetic';
+  // 1) 지난 안내들을 같은 손글씨로 다시 쓴다
+  let e = S.t - rewrite.t0;
+  if (e < PRE_TOTAL) {
+    for (const line of PRE) {
+      const d = preDur(line);
+      if (e < d) {
+        const n = Math.min(line.length, Math.floor(e / PRE_CHAR)), part = line.slice(0, n);
+        const fade = e > d - 0.25 ? (d - e) / 0.25 : 1, x0 = W / 2 - ctx.measureText(line).width / 2;
+        ctx.globalAlpha = fade; ctx.fillStyle = INK; ctx.shadowColor = 'rgba(234,230,222,1)'; ctx.shadowBlur = 10;
+        ctx.fillText(part, x0, y);
+        thread(x0 + ctx.measureText(part).width + 5, y - size * 0.3);
+        break;
+      }
+      e -= d;
+    }
+    ctx.restore(); ctx.globalAlpha = 1; return;
+  }
   const stamped = rewrite.stampT >= 0;
   const head = '나를 ', tail = ' 줘', word = stamped ? TEXT5.rewriteNew : TEXT5.rewriteWord;
   const wHead = ctx.measureText(head).width, wWord = ctx.measureText(word).width, wTail = ctx.measureText(tail).width;
   const x0 = W / 2 - (wHead + wWord + wTail) / 2;
   // 그 사람의 손끝이 쓰는 중 (처음 한 번: 이 글씨가 그 사람의 것)
-  const full = head + TEXT5.rewriteWord + tail, n = Math.min(full.length, Math.floor((S.t - rewrite.t0) / 0.14));
+  const full = head + TEXT5.rewriteWord + tail, n = Math.min(full.length, Math.floor((S.t - rewrite.t0 - PRE_TOTAL) / MAIN_CHAR));
   ctx.fillStyle = INK; ctx.shadowColor = 'rgba(234,230,222,1)'; ctx.shadowBlur = 10;
   if (n < full.length && !stamped) {
     const part = full.slice(0, n); ctx.fillText(part, x0, y);
-    ctx.shadowBlur = 0; ctx.fillStyle = PINK; ctx.beginPath(); ctx.arc(x0 + ctx.measureText(part).width + 5, y - size * 0.3, 6, 0, Math.PI * 2); ctx.fill();
+    thread(x0 + ctx.measureText(part).width + 5, y - size * 0.3);
     ctx.restore(); return;
   }
   ctx.fillText(head, x0, y); ctx.fillText(tail, x0 + wHead + wWord, y);

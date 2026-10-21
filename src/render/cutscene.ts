@@ -2,8 +2,9 @@
 // 무슨 일이 벌어졌는지 플레이어가 정확히 알아보게 하려는 것. 번쩍임 없이 번지고 걷힌다
 import { view } from '../world/state';
 import { backdrop, ctx } from './canvas';
-import { BRUSH, INK, MONO, PAPER, VOLT, reduceMotion } from './palette';
+import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 import { rand } from '../util/math';
+import { figure } from './figure';
 
 const PINK = '#ff2a7f';
 
@@ -24,13 +25,23 @@ export const CUT_SLAM_MS = SLAM * 1000;
 const HAND0 = 3.4, HAND_DUR = 3.0;
 const FADE = 0.45;
 
-let cut: (ThornCut & { t: number; end: number }) | null = null;
+/** 진실 컷신: 꿈 바깥의 머리맡 (잠든 나, 기타를 치는 그 사람) */
+const TRUTH_DUR = 8.5;
+
+type Cut = (ThornCut & { kind: 'thorn' } | { kind: 'truth' }) & { t: number; end: number };
+let cut: Cut | null = null;
 let drops: { x: number; y: number; vx: number; vy: number; r: number; c: string }[] = [];
 let onEnd: (() => void) | null = null;
 
 /** 가시 뽑기 컷신을 시작한다. 끝나면 done을 부른다 */
 export function playThornCut(c: ThornCut, done?: () => void) {
-  cut = { ...c, t: 0, end: c.hand ? HAND0 + HAND_DUR + FADE : OUT_GONE + 1.4 + FADE };
+  cut = { ...c, kind: 'thorn', t: 0, end: c.hand ? HAND0 + HAND_DUR + FADE : OUT_GONE + 1.4 + FADE };
+  drops = []; onEnd = done ?? null;
+  document.body.classList.add('cutting');
+}
+/** 진실 컷신: 화면 가득 꿈 바깥의 머리맡을 보여 준다 */
+export function playTruthCut(done?: () => void) {
+  cut = { kind: 'truth', t: 0, end: TRUTH_DUR + FADE };
   drops = []; onEnd = done ?? null;
   document.body.classList.add('cutting');
 }
@@ -44,8 +55,8 @@ export function tickCut(dt: number) {
   cut.t += dt;
   // ♮이 박히는 순간과 ♭이 뽑히는 순간에 먹물이 튄다
   const { W, H } = view, px = W * 0.5, py = H * 0.6;
-  if (before < SLAM && cut.t >= SLAM) for (let i = 0; i < 40; i++) { const a = rand(-Math.PI, 0), v = rand(200, 700); drops.push({ x: px, y: py - 40, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(3, 9), c: i % 4 ? INK : VOLT }); }
-  if (before < YANK && cut.t >= YANK) for (let i = 0; i < 50; i++) { const a = rand(-Math.PI * 0.9, -Math.PI * 0.1), v = rand(250, 900); drops.push({ x: px + rand(-40, 40), y: py, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(2, 8), c: i % 3 ? INK : PINK }); }
+  if (cut.kind === 'thorn' && before < SLAM && cut.t >= SLAM) for (let i = 0; i < 40; i++) { const a = rand(-Math.PI, 0), v = rand(200, 700); drops.push({ x: px, y: py - 40, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(3, 9), c: i % 4 ? INK : VOLT }); }
+  if (cut.kind === 'thorn' && before < YANK && cut.t >= YANK) for (let i = 0; i < 50; i++) { const a = rand(-Math.PI * 0.9, -Math.PI * 0.1), v = rand(250, 900); drops.push({ x: px + rand(-40, 40), y: py, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: rand(2, 8), c: i % 3 ? INK : PINK }); }
   for (const d of drops) { d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 1400 * dt; d.vx *= 0.98; }
   drops = drops.filter(d => d.y < H + 40);
   if (cut.t >= cut.end) { cut = null; document.body.classList.remove('cutting'); const f = onEnd; onEnd = null; f?.(); }
@@ -67,7 +78,8 @@ export function drawCut() {
   ctx.globalAlpha = clamp01(alpha);
   ctx.beginPath(); ctx.rect(x0, y0, pw, ph); ctx.save(); ctx.clip();
   if (backdrop.paper) ctx.drawImage(backdrop.paper, 0, 0, W, H); else { ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, H); }
-  if (t < HAND0 || !cut.hand) drawPull(t); else drawHand(t - HAND0);
+  if (cut.kind === 'truth') drawBedside(t);
+  else if (t < HAND0 || !cut.hand) drawPull(t, cut); else drawHand(t - HAND0);
   for (const d of drops) { ctx.fillStyle = d.c; ctx.beginPath(); ctx.ellipse(d.x, d.y, d.r * 1.6, d.r, Math.atan2(d.vy, d.vx), 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
   // 판 테두리: 붓으로 그은 먹 선
@@ -108,7 +120,7 @@ function brushText(txt: string, x: number, y: number, size: number, fill: string
 }
 
 /** 1컷: 물에 박힌 ♭ → 코드의 ♮이 내리꽂힘 → ♭이 뽑혀 날아간다 */
-function drawPull(t: number) {
+function drawPull(t: number, c: ThornCut) {
   const { W, H } = view, cx = W * 0.5, wy = H * 0.62, sc = Math.min(W, H) / 800 * 1.6;
   // 물: 가로로 그은 먹 물결
   ctx.strokeStyle = INK; ctx.lineCap = 'round';
@@ -138,14 +150,14 @@ function drawPull(t: number) {
   }
   // 위쪽: 빠지는 음 이름
   ctx.globalAlpha = t < YANK ? 1 : clamp01(1 - (t - YANK) * 2);
-  brushText(cut!.from, cx, H * 0.14, 46, INK, 0);
+  brushText(c.from, cx, H * 0.14, 46, INK, 0);
   ctx.globalAlpha = 1;
   // 코드와 ♮이 위에서 내리꽂힌다
   if (t > SLAM - 0.18) {
     const k = easeOut((t - (SLAM - 0.18)) / 0.18);
     const ny = lerp(-H * 0.2, wy - 120 * sc, k);
     if (t < YANK + 0.5) natural(cx - 150 * sc, ny + (t > SLAM && !reduceMotion ? Math.sin(t * 50) * 3 * clamp01(YANK - t + 0.3) : 0), sc * 0.95);
-    brushText(cut!.chord, W * 0.2, lerp(-H * 0.2, H * 0.3, k), Math.round(170 * sc / 1.6), VOLT, 10);
+    brushText(c.chord, W * 0.2, lerp(-H * 0.2, H * 0.3, k), Math.round(170 * sc / 1.6), VOLT, 10);
   }
   // 뽑힌 뒤: 큰 글씨로 결과
   if (t > OUT_GONE - 0.35) {
@@ -153,7 +165,7 @@ function drawPull(t: number) {
     ctx.save(); ctx.globalAlpha = k; ctx.translate(cx, H * 0.34); ctx.scale(0.8 + 0.2 * k, 0.8 + 0.2 * k);
     brushText('가시 뽑기 성공', 0, 0, Math.round(Math.min(110, W / 9)), PINK, 9);
     ctx.font = `600 22px ${MONO}`; ctx.fillStyle = INK; ctx.textAlign = 'center';
-    ctx.fillText(`${cut!.from}  →  ${cut!.to}`, 0, 76);
+    ctx.fillText(`${c.from}  →  ${c.to}`, 0, 76);
     ctx.restore();
   }
 }
@@ -237,3 +249,57 @@ function fingers(cx: number, cy: number, s: number, curl: number, front: boolean
 }
 
 const lerp = (a: number, b: number, k: number) => a + (b - a) * clamp01(k);
+
+/**
+ * 진실 컷: 꿈 바깥의 밤. 침대에 잠든 나(덮인 담요는 그 핫핑크), 머리맡 의자에서 기타를 치는 그 사람.
+ * 기타에서 퍼지는 소리의 파동이 내 머리에 닿는다 — 게임 내내 긁어 온 소나가 바로 이것이었다
+ */
+function drawBedside(t: number) {
+  const { W, H } = view, s = Math.min(W, H) / 800;
+  // 밤: 위가 조금 어두운 먹빛
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(23,20,15,.28)'); g.addColorStop(1, 'rgba(23,20,15,.06)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // 창과 달
+  const wx = W * 0.62, wy = H * 0.14;
+  ctx.lineWidth = 3; ctx.strokeRect(wx, wy, 150 * s, 190 * s);
+  ctx.beginPath(); ctx.moveTo(wx + 75 * s, wy); ctx.lineTo(wx + 75 * s, wy + 190 * s); ctx.stroke();
+  ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(wx + 40 * s, wy + 50 * s, 18 * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // 바닥
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W * 0.06, H * 0.84); ctx.lineTo(W * 0.94, H * 0.84); ctx.stroke();
+  // 침대: 머리 쪽이 왼쪽
+  const bx = W * 0.4, by = H * 0.6, bw = W * 0.46, bh = 70 * s;
+  ctx.fillStyle = PAPER; ctx.lineWidth = 4;
+  ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh);
+  ctx.beginPath(); ctx.moveTo(bx, by + bh); ctx.lineTo(bx, H * 0.84); ctx.moveTo(bx + bw, by + bh); ctx.lineTo(bx + bw, H * 0.84); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx - 4, by - 70 * s); ctx.lineTo(bx - 4, H * 0.84); ctx.stroke(); // 머리판
+  // 베개와 잠든 나
+  ctx.fillStyle = PAPER; ctx.beginPath(); ctx.ellipse(bx + 50 * s, by - 6 * s, 44 * s, 18 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(bx + 54 * s, by - 18 * s, 17 * s, 0, Math.PI * 2); ctx.fill();
+  // 덮인 담요: 밤의 방에서 내가 거절했던 그 색
+  ctx.fillStyle = PINK; ctx.beginPath();
+  ctx.moveTo(bx + 80 * s, by + 4 * s); ctx.quadraticCurveTo(bx + bw * 0.5, by - 34 * s, bx + bw - 10 * s, by - 6 * s);
+  ctx.lineTo(bx + bw - 6 * s, by + bh * 0.7); ctx.lineTo(bx + 76 * s, by + bh * 0.7); ctx.closePath(); ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+  // 머리맡 의자에 앉아 기타를 치는 그 사람 (얼굴은 그리지 않는다)
+  const px = W * 0.2, py = H * 0.8, k = 3.4 * s;
+  ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px - 20 * s, py); ctx.lineTo(px - 20 * s, H * 0.84); ctx.moveTo(px + 90 * s, py); ctx.lineTo(px + 90 * s, H * 0.84); ctx.moveTo(px - 26 * s, py); ctx.lineTo(px + 96 * s, py); ctx.stroke();
+  const strum = Math.sin(t * 7) * 3 * s;
+  ctx.save(); ctx.translate(px, py - 4 * s + strum * 0.2); ctx.scale(k, k); ctx.fillStyle = INK_SOFT; ctx.strokeStyle = INK_SOFT; figure(); ctx.restore();
+  // 소리의 파동: 기타에서 내 머리로 (게임 내내 긁어 온 소나)
+  const gx = px + 30 * k * 0.4, gy = py - 30 * s, hx = bx + 54 * s, hy = by - 18 * s;
+  ctx.save(); ctx.strokeStyle = PINK; ctx.lineWidth = 2.5;
+  for (let i = 0; i < 4; i++) {
+    const ph = ((t * 0.55 + i / 4) % 1);
+    const r = 20 * s + ph * Math.hypot(hx - gx, hy - gy);
+    ctx.globalAlpha = (1 - ph) * 0.8 * clamp01(t / 1.2);
+    ctx.beginPath(); ctx.arc(gx, gy, r, -0.55, 0.25); ctx.stroke();
+  }
+  ctx.restore();
+  // 글
+  const a1 = clamp01((t - 2.4) / 1.2), a2 = clamp01((t - 4.6) / 1.4);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (a1 > 0) { ctx.globalAlpha = a1; brushText('잠든 건, 나였다', W * 0.4, H * 0.2, Math.round(Math.min(78, W / 12)), INK, 0); }
+  if (a2 > 0) { ctx.globalAlpha = a2 * 0.85; brushText('머리맡에서, 이 노래가 들려오고 있었다', W * 0.4, H * 0.3, Math.round(Math.min(32, W / 26)), INK_SOFT, 0); }
+  ctx.globalAlpha = 1;
+}

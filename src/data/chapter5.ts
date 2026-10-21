@@ -83,6 +83,7 @@ export const TEXT5 = {
   testPick: '떠오른 그림의 코드로',
   testThanks: '기억해 줘서 고마워',
   testOkay: '괜찮아',
+  testBlur: '그때 액자 밖을 보지 않은 기억은, 흐릿하다',
   restHint: '긁지 말고, 들어 보세요',
   whisper: '나는 여기 있어',
   rewriteBefore: '나를 잊어 줘',

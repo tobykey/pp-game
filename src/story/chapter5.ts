@@ -9,7 +9,8 @@ import { playNote } from '../audio/engine';
 import { resolveChord } from '../input/chord';
 import { splash } from '../render/effects';
 import { INK, reduceMotion } from '../render/palette';
-import { creepers, nat, rewrite, test5, truth } from '../render/chapter5Art';
+import { creepers, nat, rewrite, rewriteWritten, test5, truth } from '../render/chapter5Art';
+import { playTruthCut } from '../render/cutscene';
 import { chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
 import { boatX, boatY } from '../world/geometry';
 import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
@@ -222,11 +223,13 @@ const test: StepHandler = {
 };
 
 // ---------- 5-6 잠든 건 나였다 (쉼표: 긁기를 멈춰야 그 사람의 기타가 들린다) ----------
+// 차오를수록 화면 가장자리가 어두워지고 배 쪽으로 조여 들며, 두 번째 심장이 커진다 (긴장)
+// 다 차면 숨을 멈춘 듯한 정적 → 화면 가득 진실 컷(꿈 바깥의 머리맡) → 배 위의 자리가 바뀌어 있다
 let restDone = false, restBeat = 0, restEl = 0;
 function crackRest() {
   if (restDone || S.rest < 0) return;
   if (S.rest > 0) { S.restCrackT = S.t; playNote(96, 0.35); }
-  S.rest = 0; restBeat = 0;
+  S.rest = 0; restBeat = 0; S.heart2 = 1.6; S.pressT = 0;
 }
 const truthStep: StepHandler = {
   enter() {
@@ -239,20 +242,26 @@ const truthStep: StepHandler = {
     if (restDone || S.rest < 0) return;
     // 긁지 않는 박마다 쉼표가 한 겹씩 차오르고, 그 사람의 기타가 조금씩 또렷해진다
     S.rest = Math.min(1, S.rest + 1 / REST_BEATS);
+    S.heart2 = 1.6 + 2.2 * S.rest; S.pressT = 0.55 * S.rest;
     const ch: ChordId = Math.floor(restBeat / 4) % 2 ? 'Ab' : 'Db6', notes = CHORDS[ch].v.filter((m): m is number => m != null);
     playNote(notes[restBeat % notes.length] + 12, 0.12 + 0.5 * S.rest);
     restBeat++;
-    if (S.rest >= 1) { restDone = true; restEl = currentEl; ink(null); }
+    if (S.rest >= 1) { restDone = true; restEl = currentEl; ink(null); setTempo(65, 'none'); }
   },
   update(_dt, el) {
     if (!restDone) return;
     const e = el - restEl;
-    // 그 사람의 기타가 또렷해지고, 화면이 천천히 뒤집혀 자리가 바뀐다
-    once('arp', e > 0.3, () => { chordSound('Db6', 0.5); setTimeout(() => chordSound('Ab', 0.5), 1800); });
-    once('swap', e > 1, () => { S.swapT = 1; S.rest = -1; });
-    once('whisper', e > 4, () => { truth.whisperT = S.t; });
-    once('sunk', e > 6, () => { S.sunkT = 1; S.crack = 4; });
-    if (e > 11) goLater('c5rewrite', el, 0);
+    // 숨을 멈춘 정적 1.2초 → 진실 컷 (그 사람의 기타가 이어서 울린다)
+    once('cut', e > 1.2, () => {
+      [0, 1900, 3800, 5700].forEach((ms, i) => setTimeout(() => chordSound(i % 2 ? 'Ab' : 'Db6', 0.55), ms));
+      playTruthCut(() => {
+        S.rest = -1; S.pressT = 0; S.swap = S.swapT = 1;
+        setTempo(65, 'heart'); S.heart2 = 1.8;
+        truth.whisperT = S.t;
+        setTimeout(() => { S.sunkT = 1; S.crack = 4; }, 1500);
+        goLater('c5rewrite', currentEl, 7);
+      });
+    });
   },
   stroke() { crackRest(); },
   pluck() { crackRest(); },
@@ -268,7 +277,7 @@ const rewriteStep: StepHandler = {
     unlock(['Db']);
   },
   update(dt, el) {
-    const written = S.t - rewrite.t0 > 0.14 * '나를 잊어 줘'.length + 0.6;
+    const written = rewriteWritten();
     if (written && writtenEl < 0) writtenEl = el;
     if (writtenEl >= 0 && rewrite.stampT < 0) {
       // 아무것도 안 하면 단어가 먼저 떨려 신호를 준다
@@ -299,8 +308,8 @@ const rewriteStep: StepHandler = {
 const after: StepHandler = {
   enter() {
     setTempo(65, 'heart'); S.heart2 = 1.9; S.bflatT = 1;
-    // 잠깐 보였던 진실이 걷히고, 다시 꿈의 배로 (자리는 원래대로)
-    S.swapT = 0; S.sunkT = 0.4;
+    // 바뀐 자리는 그대로 둔다 (챕터 6 첫머리에서 꿈의 배로 돌아간다)
+    S.sunkT = 0.4;
   },
   update(_dt, el) {
     once('off', el > 3, () => { rewrite.on = false; });
