@@ -17,17 +17,13 @@ import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
 import { row } from '../world/rowing';
 import { S, fx, obj, str, thorns, view } from '../world/state';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler } from './director';
+import { go, type StepHandler } from './director';
+import { sceneKit } from './scene';
 import { counterSoon, settleWaves, showWaves, tryCounter } from './counter';
 
 const PINK = '#ff2a7f';
-const done = new Set<string>();
-function once(key: string, cond: boolean, fn: () => void) {
-  if (cond && !done.has(key)) { done.add(key); fn(); }
-}
-let pending: { at: number; to: StepId } | null = null;
-function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
-let currentEl = 0;
+/** 이 챕터의 장면 도구 (story/scene.ts) */
+const { done, once, goLater, register, el: elNow } = sceneKit();
 
 // ---------- 3-1 바람이 모자라다 ----------
 const stall: StepHandler = {
@@ -225,7 +221,7 @@ function pullAflat() {
   // 화면 가득 컷신: 뽑힌 ♭ → 잠든 줄 알았던 그 사람의 손이 받는다. 끝나면 게임 속 손도 살짝 오므린다
   playThornCut({ chord: 'F', from: 'A♭', to: 'A', hand: true }, () => {
     S.catchT = 1;
-    goLater('c3after', currentEl, 1.5);
+    goLater('c3after', elNow(), 1.5);
   });
 }
 
@@ -244,16 +240,7 @@ const after: StepHandler = {
 
 // ---------- 공통 래퍼 ----------
 const all: Partial<Record<StepId, StepHandler>> = { c3stall: stall, c3sail: sail, c3sea: sea, c3gate: gate, c3after: after };
-for (const h of Object.values(all) as StepHandler[]) {
-  const enter = h.enter, update = h.update;
-  h.enter = () => { done.clear(); pending = null; enter?.(); };
-  h.update = (dt, el) => {
-    currentEl = el;
-    update?.(dt, el);
-    if (pending && el >= pending.at) { const to = pending.to; pending = null; go(to); }
-  };
-}
-registerSteps(all);
+register(all);
 
 /** 챕터 3 중간 장면으로 바로 갈 때 */
 export function fastForward3(target: StepId) {

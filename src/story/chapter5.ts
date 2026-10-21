@@ -14,24 +14,17 @@ import { playTruthCut } from '../render/cutscene';
 import { chapterCard, cue, ink, setProgress, unlock } from '../ui/hud';
 import { boatX, boatY } from '../world/geometry';
 import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
-import { OBJ, S, fx, obj, str, view } from '../world/state';
+import { OBJ, S, fx, obj, view } from '../world/state';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler } from './director';
+import { type StepHandler } from './director';
+import { sceneKit } from './scene';
+import { chordSound } from './sfx';
 
 const PINK = '#ff2a7f';
-const done = new Set<string>();
-function once(key: string, cond: boolean, fn: () => void) {
-  if (cond && !done.has(key)) { done.add(key); fn(); }
-}
-let pending: { at: number; to: StepId } | null = null;
-function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
-let currentEl = 0;
+/** 이 챕터의 장면 도구 (story/scene.ts) */
+const { done, once, goLater, register, el: elNow } = sceneKit();
 
 const OTHER_IDS = ['o5meet', 'o5room', 'o5stage', 'o5rain'];
-/** 화음을 줄 하나씩 빠르게 (그 사람이 치는 기타) */
-function chordSound(c: ChordId, dyn = 0.8, at = 0) {
-  CHORDS[c].v.forEach((m, i) => setTimeout(() => { playNote(m, dyn); str[i].amp = Math.max(str[i].amp, 8 * dyn); str[i].hot = 1; }, at + i * 24));
-}
 
 // ---------- 5-1 D.S. ----------
 const ret: StepHandler = {
@@ -184,7 +177,7 @@ function ask(i: number) {
     const o = obj('ans' + k);
     o.hidden = false; o.vis = 0; o.wx = S.boat + (k % 2 ? 0.3 : -0.3);
   }
-  qEl = currentEl; anyShown = false;
+  qEl = elNow(); anyShown = false;
 }
 const test: StepHandler = {
   enter() {
@@ -217,7 +210,7 @@ const test: StepHandler = {
       if (next < QUESTIONS.length) { ask(next); return; }
       for (let i = 0; i < 4; i++) obj('ans' + i).hidden = true;
       test5.end = test5.missed.length ? 'okay' : 'thanks'; test5.endT = S.t;
-      goLater('c5truth', currentEl, 6 + test5.missed.length * 0.9);
+      goLater('c5truth', elNow(), 6 + test5.missed.length * 0.9);
     }, 2600);
   },
 };
@@ -246,7 +239,7 @@ const truthStep: StepHandler = {
     const ch: ChordId = Math.floor(restBeat / 4) % 2 ? 'Ab' : 'Db6', notes = CHORDS[ch].v.filter((m): m is number => m != null);
     playNote(notes[restBeat % notes.length] + 12, 0.12 + 0.5 * S.rest);
     restBeat++;
-    if (S.rest >= 1) { restDone = true; restEl = currentEl; ink(null); setTempo(65, 'none'); }
+    if (S.rest >= 1) { restDone = true; restEl = elNow(); ink(null); setTempo(65, 'none'); }
   },
   update(_dt, el) {
     if (!restDone) return;
@@ -259,7 +252,7 @@ const truthStep: StepHandler = {
         setTempo(65, 'heart'); S.heart2 = 1.8;
         truth.whisperT = S.t;
         setTimeout(() => { S.sunkT = 1; S.crack = 4; }, 1500);
-        goLater('c5rewrite', currentEl, 7);
+        goLater('c5rewrite', elNow(), 7);
       });
     });
   },
@@ -324,16 +317,7 @@ const after: StepHandler = {
 const all: Partial<Record<StepId, StepHandler>> = {
   c5return: ret, c5other: other, c5creep: creep, c5natural: natural, c5test: test, c5truth: truthStep, c5rewrite: rewriteStep, c5after: after,
 };
-for (const h of Object.values(all) as StepHandler[]) {
-  const enter = h.enter, update = h.update;
-  h.enter = () => { done.clear(); pending = null; enter?.(); };
-  h.update = (dt, el) => {
-    currentEl = el;
-    update?.(dt, el);
-    if (pending && el >= pending.at) { const to = pending.to; pending = null; go(to); }
-  };
-}
-registerSteps(all);
+register(all);
 
 /** 챕터 5 중간 장면으로 바로 갈 때 */
 export function fastForward5(target: StepId) {

@@ -21,17 +21,13 @@ import { row } from '../world/rowing';
 import { OBJ, S, fx, obj, str, thorns, view, type WorldObj } from '../world/state';
 import { strumChord } from '../world/strum';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler } from './director';
+import { go, type StepHandler } from './director';
+import { sceneKit } from './scene';
 
 const PRE_CHORDS: ChordId[] = ['Db', 'Eb', 'Cm', 'Csus4', 'C'];
 
-const done = new Set<string>();
-function once(key: string, cond: boolean, fn: () => void) {
-  if (cond && !done.has(key)) { done.add(key); fn(); }
-}
-let pending: { at: number; to: StepId } | null = null;
-function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
-let currentEl = 0;
+/** 이 챕터의 장면 도구 (story/scene.ts) */
+const { once, goLater, register, el: elNow } = sceneKit();
 
 /** 배를 목표 지점에 스르르 세운다 */
 function arrive(target: number) {
@@ -59,7 +55,7 @@ const frozen: StepHandler = {
   },
   stroke() {
     if (!S.mute) { ink(TEXT2.hintMute); return; }
-    if (++mutedCount === 2) { ink(TEXT2.muteOk); goLater('c2echo', currentEl, 2.5); }
+    if (++mutedCount === 2) { ink(TEXT2.muteOk); goLater('c2echo', elNow(), 2.5); }
   },
 };
 
@@ -111,7 +107,7 @@ const echo: StepHandler = {
         splash(p.x, p.y - 40, 24, 0.6, INK);
         ci++; setProgress(TEXT2.progressEcho(ci, 3));
         S.nextChord = null;
-        echoPhase = 'rest'; restUntil = currentEl + 2.6;
+        echoPhase = 'rest'; restUntil = elNow() + 2.6;
       }
     } else if (s.chord !== 'open') {
       // 틀리면 기둥이 한 번 더 들려준다 (실패 없음)
@@ -273,16 +269,7 @@ const end: StepHandler = {
 const all: Partial<Record<StepId, StepHandler>> = {
   c2frozen: frozen, c2echo: echo, c2umbrella: umbrella, c2guard: guard, c2resolve: resolve, c2end: end,
 };
-for (const h of Object.values(all) as StepHandler[]) {
-  const enter = h.enter, update = h.update;
-  h.enter = () => { done.clear(); pending = null; enter?.(); };
-  h.update = (dt, el) => {
-    currentEl = el;
-    update?.(dt, el);
-    if (pending && el >= pending.at) { const to = pending.to; pending = null; go(to); }
-  };
-}
-registerSteps(all);
+register(all);
 
 /** 챕터 1의 기억 그림은 거둔다 (특히 비의 섬 액자 밖 '우산을 든 사람'이 챕터 2의 반전을 미리 보여 주지 않게) */
 function hideChapter1Paintings() { ['pRoom', 'pStage', 'pRain'].forEach(id => { obj(id).hidden = true; }); }

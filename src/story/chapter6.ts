@@ -15,25 +15,19 @@ import { chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/
 import { boatScale, boatX, boatY } from '../world/geometry';
 import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
 import { row } from '../world/rowing';
-import { S, fx, str, thorns, view } from '../world/state';
+import { S, fx, thorns, view } from '../world/state';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler } from './director';
+import { go, type StepHandler } from './director';
+import { sceneKit } from './scene';
+import { chordSound } from './sfx';
 import { counterSoon, guardSoon, settleWaves, showWaves, tryCounter, tryGuard } from './counter';
 import { fBurst } from './chapter3';
 
 const PINK = '#ff2a7f';
-const done = new Set<string>();
-function once(key: string, cond: boolean, fn: () => void) {
-  if (cond && !done.has(key)) { done.add(key); fn(); }
-}
-let pending: { at: number; to: StepId } | null = null;
-function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
-let currentEl = 0;
+/** 이 챕터의 장면 도구 (story/scene.ts) */
+const { once, goLater, register, el: elNow } = sceneKit();
 
 const ALL: ChordId[] = ['Db', 'Eb', 'Cm', 'F', 'Fsus4', 'Db6', 'Ab'];
-function chordSound(c: ChordId, dyn = 0.8) {
-  CHORDS[c].v.forEach((m, i) => setTimeout(() => { playNote(m, dyn); str[i].amp = Math.max(str[i].amp, 9 * dyn); str[i].hot = 1; }, i * 22));
-}
 function chipsFade(on: boolean) { document.body.classList.toggle('chipsfade', on); }
 
 // ---------- 6-1 마지막 후렴 ----------
@@ -153,7 +147,7 @@ function riseUp() {
   // 그 사람의 기타가 처음으로 내 기타와 함께 울린다
   chordSound('F', 1);
   if (!reduceMotion) S.shake = Math.max(S.shake, 6);
-  goLater('c6together', currentEl, 2.2);
+  goLater('c6together', elNow(), 2.2);
 }
 
 // ---------- 6-4 두 사람의 줄 ----------
@@ -244,7 +238,7 @@ function choose(side: 'keep' | 'give') {
     S.bflatT = 0.35; S.heart2 = 1.4; S.heart2Every = 1; S.heart2Off = 0.12; S.riseT = 1;
   }
   chordSound('Db6', 0.5);
-  goLater('c6coda', currentEl, 4);
+  goLater('c6coda', elNow(), 4);
 }
 
 // ---------- 6-7 코다 ----------
@@ -281,7 +275,7 @@ function finish() {
   // 마지막 F를 길게 떨며 끝 (트레몰로), 화면엔 핑크 점 하나
   setTempo(65, 'none'); S.cruise = 0;
   for (let k = 0; k < 10; k++) setTimeout(() => chordSound('F', 0.9 - k * 0.08), k * 150);
-  goLater('c6end', currentEl, 3.5);
+  goLater('c6end', elNow(), 3.5);
 }
 
 // ---------- 엔딩 ----------
@@ -307,16 +301,7 @@ const end: StepHandler = {
 const all: Partial<Record<StepId, StepHandler>> = {
   c6chorus: chorus, c6gauntlet: gauntlet, c6clash: clash, c6together: togetherStep, c6heart: heartStep, c6choice: choiceStep, c6coda: coda, c6end: end,
 };
-for (const h of Object.values(all) as StepHandler[]) {
-  const enter = h.enter, update = h.update;
-  h.enter = () => { done.clear(); pending = null; enter?.(); };
-  h.update = (dt, el) => {
-    currentEl = el;
-    update?.(dt, el);
-    if (pending && el >= pending.at) { const to = pending.to; pending = null; go(to); }
-  };
-}
-registerSteps(all);
+register(all);
 
 /** 챕터 6 중간 장면으로 바로 갈 때 */
 export function fastForward6(target: StepId) {

@@ -13,16 +13,13 @@ import { judgeBeat } from '../world/judge';
 import { row } from '../world/rowing';
 import { OBJ, S, cloth, fx, obj, view } from '../world/state';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler } from './director';
+import { go, type StepHandler } from './director';
+import { sceneKit } from './scene';
 
 /** 장면마다 '한 번만' 일어나야 하는 일을 기록 */
-const done = new Set<string>();
-function once(key: string, cond: boolean, fn: () => void) {
-  if (cond && !done.has(key)) { done.add(key); fn(); }
-}
+/** 이 챕터의 장면 도구 (story/scene.ts) */
+const { done, once, goLater, register, el: elNow } = sceneKit();
 /** 다음 장면으로 넘어가기를 예약 (같은 장면 안에서 한 번만) */
-let pending: { at: number; to: StepId } | null = null;
-function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
 
 const PINK = '#ff2a7f';
 const lamps = () => OBJ.filter(o => o.kind === 'lamp');
@@ -158,7 +155,7 @@ const clothStep: StepHandler = {
   },
   stroke() {
     if (!cloth.active || cloth.tied || !done.has('arrive')) return;
-    cloth.tied = true; cloth.active = false; tiedAt = currentEl;
+    cloth.tied = true; cloth.active = false; tiedAt = elNow();
     S.sashT = 0.8; S.pieces = Math.max(S.pieces, 1);
     ink(null);
     splash(boatX() + 10, boatY() - 60, 18, 0.5, PINK);
@@ -241,20 +238,10 @@ const end: StepHandler = {
 };
 
 // ---------- 공통 래퍼: 예약된 장면 전환 처리 ----------
-let currentEl = 0;
 const all: Partial<Record<StepId, StepHandler>> = {
   wake, whisper, row: rowStep, lamps: lampsStep, hook, reflect, cloth: clothStep, chorus, island, end,
 };
-for (const h of Object.values(all) as StepHandler[]) {
-  const enter = h.enter, update = h.update;
-  h.enter = () => { done.clear(); pending = null; enter?.(); };
-  h.update = (dt, el) => {
-    currentEl = el;
-    update?.(dt, el);
-    if (pending && el >= pending.at) { const to = pending.to; pending = null; go(to); }
-  };
-}
-registerSteps(all);
+register(all);
 
 /**
  * 중간 장면으로 바로 갈 때(이어하기·장면 고르기), 그 앞 장면들이 끝났을 때의 상태를 만들어 둔다

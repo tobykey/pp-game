@@ -18,17 +18,13 @@ import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
 import { row } from '../world/rowing';
 import { S, fx, obj, str, thorns, view } from '../world/state';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler } from './director';
+import { go, type StepHandler } from './director';
+import { sceneKit } from './scene';
 import { counterSoon, guardSoon, settleWaves, showWaves, tryCounter, tryGuard } from './counter';
 
 const PINK = '#ff2a7f';
-const done = new Set<string>();
-function once(key: string, cond: boolean, fn: () => void) {
-  if (cond && !done.has(key)) { done.add(key); fn(); }
-}
-let pending: { at: number; to: StepId } | null = null;
-function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
-let currentEl = 0;
+/** 이 챕터의 장면 도구 (story/scene.ts) */
+const { once, goLater, register, el: elNow } = sceneKit();
 
 const ALL_CHORDS: ChordId[] = ['Db6', 'Ab', 'Db', 'Eb', 'Cm', 'F', 'Fsus4'];
 
@@ -212,7 +208,7 @@ function winClash() {
   splash(x, y, 80, 1.5, PINK);
   setTempo(65, 'heart');
   setTimeout(() => { S.tug = -1; }, 900);
-  goLater('c4thorn', currentEl, 2.2);
+  goLater('c4thorn', elNow(), 2.2);
 }
 
 // ---------- 4-6 D♭ 가시 ----------
@@ -251,7 +247,7 @@ function pullDflat() {
   playThornCut({ chord: 'D', from: 'D♭', to: 'D', hand: false }, () => {
     S.crack = 3;
     banner(TEXT4.pulled, 'soft', 2200);
-    goLater('c4after', currentEl, 1.5);
+    goLater('c4after', elNow(), 1.5);
   });
 }
 
@@ -276,16 +272,7 @@ const after: StepHandler = {
 
 // ---------- 공통 래퍼 ----------
 const all: Partial<Record<StepId, StepHandler>> = { c4ebb: ebb, c4solo: solo, c4turn: turn, c4storm: storm, c4clash: clash, c4thorn: thornStep, c4after: after };
-for (const h of Object.values(all) as StepHandler[]) {
-  const enter = h.enter, update = h.update;
-  h.enter = () => { done.clear(); pending = null; enter?.(); };
-  h.update = (dt, el) => {
-    currentEl = el;
-    update?.(dt, el);
-    if (pending && el >= pending.at) { const to = pending.to; pending = null; go(to); }
-  };
-}
-registerSteps(all);
+register(all);
 
 /** 챕터 4 중간 장면으로 바로 갈 때 */
 export function fastForward4(target: StepId) {

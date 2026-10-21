@@ -19,18 +19,14 @@ import { row } from '../world/rowing';
 import { OBJ, S, fx, obj, str, thorns, view, type WorldObj } from '../world/state';
 import { bassStroke } from '../world/strum';
 import { rand } from '../util/math';
-import { go, registerSteps, type StepHandler, type Stroke } from './director';
+import { go, type StepHandler, type Stroke } from './director';
+import { sceneKit } from './scene';
 
 const PINK = '#ff2a7f';
 const VERSE_CHORDS: ChordId[] = ['Fm', 'Db', 'Eb', 'Ab', 'C'];
 
-const done = new Set<string>();
-function once(key: string, cond: boolean, fn: () => void) {
-  if (cond && !done.has(key)) { done.add(key); fn(); }
-}
-let pending: { at: number; to: StepId } | null = null;
-function goLater(to: StepId, el: number, delay: number) { if (!pending) pending = { at: el + delay, to }; }
-let currentEl = 0;
+/** 이 챕터의 장면 도구 (story/scene.ts) */
+const { once, goLater, register, el: elNow } = sceneKit();
 
 const onBeat = () => judgeBeat().j !== 'miss';
 
@@ -273,7 +269,7 @@ function pullThorn() {
   cue(null); ink(null); setProgress(''); setObjective('');
   S.dimT = 0; S.vortexT = 0; S.nextChord = null;
   // 화면 가득 컷신: 무엇이 뽑혔는지 똑똑히 보여 준다
-  playThornCut({ chord: 'C', from: 'E♭', to: 'E', hand: false }, () => { banner(TEXT1.pulled, 'soft', 2200); goLater('c1rain', currentEl, 1.5); });
+  playThornCut({ chord: 'C', from: 'E♭', to: 'E', hand: false }, () => { banner(TEXT1.pulled, 'soft', 2200); goLater('c1rain', elNow(), 1.5); });
   // 음악이 뚝 끊긴다 → 한 박 뒤, 딱 한 번 기타가 C 화음으로 터진다 (복선: 가시를 받아 삼킨 그 사람의 소리)
   setTempo(65, 'none');
   const prevMode = S.mode;
@@ -327,7 +323,7 @@ const rain: StepHandler = {
         // 거절했던 우산이 천 조각이 되어 날아온다 (조각 3)
         const d = flyPiece(toScreenX(P_RAIN + PAINT_W / 2 + 0.09), view.H * 0.3);
         setTimeout(() => { S.pieces = Math.max(S.pieces, 3); }, d * 1000);
-        goLater('c1after', currentEl, 2.6);
+        goLater('c1after', elNow(), 2.6);
         return;
       }
       ink(null);
@@ -377,16 +373,7 @@ const after: StepHandler = {
 const all: Partial<Record<StepId, StepHandler>> = {
   c1sail: sail, c1snap: snapStep, c1room: room, c1stage: stage, c1thorn: thornStep, c1rain: rain, c1after: after,
 };
-for (const h of Object.values(all) as StepHandler[]) {
-  const enter = h.enter, update = h.update;
-  h.enter = () => { done.clear(); pending = null; enter?.(); };
-  h.update = (dt, el) => {
-    currentEl = el;
-    update?.(dt, el);
-    if (pending && el >= pending.at) { const to = pending.to; pending = null; go(to); }
-  };
-}
-registerSteps(all);
+register(all);
 
 /** 챕터 1 중간 장면으로 바로 갈 때, 앞 장면들이 끝났을 때의 상태를 만든다 (챕터 0은 fastForward0이 맡음) */
 export function fastForward1(target: StepId) {

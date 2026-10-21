@@ -487,14 +487,16 @@ function drawMist() {
   ctx.drawImage(mistCv, 0, y0 / LO, mistCv.width, (y1 - y0) / LO, 0, y0, W, y1 - y0);
 }
 
-/** 박의 비네트: 모양은 화면 크기가 바뀔 때만 다시 그리고, 매 박에는 투명도만 바꿔 붙인다 */
+/** 박의 비네트: 화면 크기가 바뀔 때만 실제 해상도로 한 번 그려 두고, 매 박에는 투명도만 바꿔 1:1로 붙인다 (늘려 붙이는 것보다 훨씬 가벼움) */
 const vigCv = document.createElement('canvas');
 let vigKey = '';
 function vignette(alpha: number) {
-  const { W, H } = view, key = W + 'x' + H;
+  const { W, H, DPR } = view, key = W + 'x' + H + '@' + DPR;
   if (key !== vigKey) {
     vigKey = key;
-    const g = lowRes(vigCv);
+    vigCv.width = Math.ceil(W * DPR); vigCv.height = Math.ceil(H * DPR);
+    const g = vigCv.getContext('2d')!;
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
     const gr = g.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.45, Math.max(W, H) * 0.75);
     gr.addColorStop(0, 'rgba(20,18,15,0)'); gr.addColorStop(1, 'rgba(20,18,15,1)');
     g.fillStyle = gr; g.fillRect(0, 0, W, H);
