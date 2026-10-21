@@ -68,9 +68,9 @@ const solo: StepHandler = {
     const p = Math.max(0, Math.min(1, (S.boat - soloStart) / SOLO_DIST));
     setProgress(TEXT4.progressSolo(Math.floor(p * 8)));
     // 나아간 만큼 균열에 글줄이 하나씩 흐른다
-    const marks = [0.12, 0.36, 0.6, 0.82];
+    const marks = [0.08, 0.28, 0.48, 0.68, 0.86];
     if (textN < marks.length && p >= marks[textN]) {
-      crackTexts.push({ wx: S.boat + 0.35, ry: 0.25 + 0.17 * textN, txt: TEXT4.cracks[textN], t0: S.t });
+      crackTexts.push({ wx: S.boat + 0.3, ry: 0.22 + 0.15 * textN, txt: TEXT4.cracks[textN], t0: S.t });
       textN++;
     }
     once('hintOff', el > 6 && strokes > 3, () => ink(null));
@@ -145,21 +145,25 @@ const storm: StepHandler = {
 };
 
 // ---------- 4-5 격돌 ① (폭주 스트로크) ----------
-let ci = 0, beatsInStage = 0, clashEnded = false, lastLost = 0;
+let ci = 0, beatsInStage = 0, clashBeats = 0, clashEnded = false, lastLost = 0;
 const clash: StepHandler = {
   enter() {
-    ci = 0; beatsInStage = 0; clashEnded = false; lastLost = 0;
-    S.tug = 0.35; S.forced = null; resolveChord(); S.nextChord = null; setProgress('');
+    ci = 0; beatsInStage = 0; clashBeats = 0; clashEnded = false; lastLost = 0;
+    // 격돌 중에도 리프 코드를 마디마다 자동으로 잡아 준다: 정신없이 긁는 동안 나도 모르게 반주가 된다
+    S.tug = 0.35; S.forced = RIFF[0]; resolveChord(); S.nextChord = null; setProgress('');
     S.cruise = 0; S.vel = 0; S.glow = 0;
     guardWaves.length = 0; counterWaves.length = 0;
     setTempo(CLASH_BPMS[0], 'storm');
-    setBarChord(bar => RIFF[bar % RIFF.length]);
+    setBarChord(null); // 템포가 바뀔 때마다 그루브 마디 세기가 처음으로 돌아가므로, 베이스는 장면이 잡은 코드(S.forced)를 따른다
     S.pressT = 0.2;
     cue(TEXT4.clashCue, 'rock');
     ink(TEXT4.clashHint);
   },
   beat() {
     if (clashEnded) return;
+    // 마디가 바뀌면 리프의 다음 코드
+    if (clashBeats % 4 === 0) { const bar = clashBeats / 4; S.forced = RIFF[bar % RIFF.length]; resolveChord(); }
+    clashBeats++;
     // 세 마디마다 박이 빨라지고 화면이 조여 온다
     if (++beatsInStage >= 12 && ci < CLASH_BPMS.length - 1) {
       beatsInStage = 0; ci++;
