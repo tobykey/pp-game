@@ -154,3 +154,6 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* 컷신 중에는 화면 위의 글자·칩을 숨긴다 */
 body.cutting .hud, body.cutting .chips, body.cutting .cue, body.cutting .ink, body.cutting .banner, body.cutting .ccard, body.cutting .hint{opacity:0!important;transition:opacity .2s}
+
+/* 마지막 관문: 손이 기억한다 — 코드 칩(운지표)이 흐려진다 */
+body.chipsfade .chips{opacity:.12;transition:opacity 3s}

@@ -11,7 +11,7 @@ import { splash } from '../render/effects';
 import { INK, reduceMotion } from '../render/palette';
 import { creepers, nat, rewrite, rewriteWritten, test5, truth } from '../render/chapter5Art';
 import { playTruthCut } from '../render/cutscene';
-import { chapterCard, cue, ink, setObjective, setProgress, unlock } from '../ui/hud';
+import { chapterCard, cue, ink, setProgress, unlock } from '../ui/hud';
 import { boatX, boatY } from '../world/geometry';
 import { grooveBeat, setBarChord, setTempo } from '../world/rhythm';
 import { OBJ, S, fx, obj, str, view } from '../world/state';
@@ -314,7 +314,9 @@ const after: StepHandler = {
   update(_dt, el) {
     once('off', el > 3, () => { rewrite.on = false; });
     once('ink', el > 3.5, () => ink(TEXT5.after));
-    once('end', el > 10, () => { ink(null); setObjective(TEXT5.nextChapter); });
+    once('inkOff', el > 9, () => ink(null));
+    // 깨어날 시간 → 챕터 6
+    if (el > 10.5) goLater('c6chorus', el, 0);
   },
 };
 

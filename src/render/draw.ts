@@ -14,6 +14,7 @@ import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 import { drawCut } from './cutscene';
 import { mark, profStart } from './prof';
+import { allies, drawAllies, drawChoice, drawDuetStrings, drawEnding } from './chapter6Art';
 import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
 import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewrite, drawSunk, drawTruth, meLying, personWithGuitar, secondReflection } from './chapter5Art';
 
@@ -99,6 +100,7 @@ export function draw() {
   drawCreepers();
   drawCloth();
   drawClashWall();
+  if (allies.length && S.tug >= 0) { const s = boatScale(), near = boatX() + 150 * s; drawAllies(near + (view.W * 0.95 - near) * S.tug); }
   drawGrounded();
   drawBoat(acc);
   mark('boat');
@@ -107,6 +109,7 @@ export function draw() {
   drawTruth();
   drawQuestion();
   drawRewrite();
+  drawChoice();
   mark('ch5 text');
   drawShield();
   drawCounterWaves();
@@ -184,6 +187,7 @@ export function draw() {
   if (S.reveal < 1) { ctx.globalAlpha = 1 - S.reveal; ctx.drawImage(backdrop.paper!, -40, -40, W + 80, H + 80); ctx.globalAlpha = 1; }
   drawSlowmo();
   drawStrings(acc);
+  drawDuetStrings();
   mark('strings');
   // 쉼표가 차오를수록 화면 가장자리가 어두워진다 (침묵의 긴장)
   if (S.rest > 0) vignette(0.5 * S.rest);
@@ -194,6 +198,7 @@ export function draw() {
   drawWhite();
   // 눈뜸: 눈을 감은 어둠
   if (S.black > 0.001) { ctx.globalAlpha = S.black; ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  drawEnding();
   drawCut();
   mark('end overlays+cut');
 }
@@ -386,13 +391,15 @@ function drawBoat(acc: string) {
   ctx.globalAlpha = 1 - S.swap; ctx.save(); ctx.translate(-76, -6); ctx.fillStyle = INK; ctx.strokeStyle = INK; figure(); ctx.restore();
   // 자리가 바뀐다 (챕터 5): 누워 있는 건 나, 기타를 안고 머리맡에 앉은 건 그 사람
   if (S.swap > 0.01) { ctx.globalAlpha = S.swap; meLying(); personWithGuitar(); }
+  // 격돌 ②: 잠든 줄 알았던 그 사람이 일어나 기타를 안고 내 옆에 앉는다
+  if (S.rise > 0.01 && S.swap < 0.5) { ctx.globalAlpha = S.rise; personWithGuitar(); }
   ctx.globalAlpha = 1;
   // 노
   ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-70, -16); ctx.lineTo(-104 + S.wobble * 80, 16); ctx.stroke();
   // 그 사람: 뱃머리에 누워 있다. 한 손이 내 쪽으로 뻗어 있다 (복선 1)
   // 겉옷을 풀어 돛에 준 뒤에는 몸이 가늘어지고 옅어지며, 아주 조금 떤다 (복선 7 회수)
   const shiver = S.bare ? Math.sin(S.t * 31) * 0.5 : 0;
-  ctx.save(); ctx.globalAlpha = 1 - S.swap;
+  ctx.save(); ctx.globalAlpha = (1 - S.swap) * (1 - S.rise);
   ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(74, -13 + shiver, 7, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = S.bare ? INK_SOFT : INK;
   ctx.beginPath(); ctx.ellipse(46, -9 + shiver, S.bare ? 24 : 26, S.bare ? 5 : 7, -0.04, 0, Math.PI * 2); ctx.fill();

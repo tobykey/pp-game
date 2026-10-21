@@ -59,7 +59,9 @@ export function go(id: StepId) {
 export const elapsed = () => el;
 
 export function updateStory(dt: number) { el += dt; cur.update?.(dt, el); }
-export function onStroke(s: Stroke) { if (S.started && !cutActive()) cur.stroke?.(s); }
+/** 마지막 스트로크 (자동 테스트·조율용) */
+export const lastStroke = { dyn: 0, chord: 'open' as ChordId };
+export function onStroke(s: Stroke) { lastStroke.dyn = s.dyn; lastStroke.chord = s.chord; if (S.started && !cutActive()) cur.stroke?.(s); }
 export function onPluck() { if (S.started) cur.pluck?.(); }
 export function onSweep(s: Sweep) { if (S.started) cur.sweep?.(s); }
 export function onBeat(n: number) { cur.beat?.(n); }

@@ -197,6 +197,16 @@ export const S = {
   bflat: 0, bflatT: 0,
   /** 두 번째 심장 소리의 크기 (기본 1) */
   heart2: 1,
+
+  // 챕터 6
+  /** 그 사람이 일어나 기타를 안고 앉는다 (격돌 ②) */
+  rise: 0, riseT: 0,
+  /** 줄이 두 사람 몫으로: 열두 줄 */
+  duet: 0, duetT: 0,
+  /** 두 번째 심장: 첫째와의 어긋남(초), 몇 박마다 뛰는지 (0 = 멈춤) */
+  heart2Off: 0.29, heart2Every: 1,
+  /** 마지막 선택 (빈 문자열 = 아직) */
+  ending: '' as '' | 'keep' | 'give',
 };
 
 export interface StringState { amp: number; ph: number; hot: number }

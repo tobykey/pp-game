@@ -77,7 +77,7 @@ function playStep(i: number, at: number, step: number) {
   if (beat < 0) return;
   switch (S.groove) {
     case 'heart':
-      if (sub === 0) { heart(at); heartFar(at + 0.29, S.heart2); }
+      if (sub === 0) { heart(at); if (S.heart2Every > 0 && beat % S.heart2Every === 0) heartFar(at + S.heart2Off, S.heart2); }
       break;
     case 'hook':
       // 악보의 훅: 킥 4분음표 + 16분 하이햇, 스네어 없음

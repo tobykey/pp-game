@@ -14,13 +14,14 @@ import { fastForward2 } from './story/chapter2';
 import { fastForward3 } from './story/chapter3';
 import { fastForward4 } from './story/chapter4';
 import { fastForward5 } from './story/chapter5';
+import { fastForward6 } from './story/chapter6';
 import { clearSeen, loadSeen } from './world/memory';
 import { guardWaves } from './render/chapter2Art';
 import { counterWaves } from './render/chapter3Art';
 import { tickCut } from './render/cutscene';
 import { test5 } from './render/chapter5Art';
 import { profReport, profReset } from './render/prof';
-import { go, loadSaved } from './story/director';
+import { go, lastStroke, loadSaved } from './story/director';
 import { initHud, setMode, updateChips } from './ui/hud';
 import { initMenu } from './ui/menu';
 import { nearestBeat, setTempo } from './world/rhythm';
@@ -72,6 +73,7 @@ function start(step: StepId) {
   fastForward3(step);
   fastForward4(step);
   fastForward5(step);
+  fastForward6(step);
   resolveChord();
   go(step);
 }
@@ -79,4 +81,4 @@ document.querySelector('#go')!.addEventListener('click', () => start((jump.value
 cont.addEventListener('click', () => start(saved!));
 
 // 자동 테스트용 (개발 서버에서만)
-if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves, test5, profReport, profReset } });
+if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves, test5, profReport, profReset, lastStroke } });

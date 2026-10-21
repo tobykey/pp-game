@@ -112,6 +112,8 @@ export function update(dt: number) {
   S.swap = ease(S.swap, S.swapT, 0.35, dt);
   S.sunk = ease(S.sunk, S.sunkT, 0.8, dt);
   S.bflat = ease(S.bflat, S.bflatT, 1, dt);
+  S.rise = ease(S.rise, S.riseT, 0.9, dt);
+  S.duet = ease(S.duet, S.duetT, 1.5, dt);
   S.lyric = ease(S.lyric, S.lyricT, 0.8, dt);
   if (S.bare) S.sashT = 0;
 }

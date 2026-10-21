@@ -127,7 +127,7 @@ const sea: StepHandler = {
 };
 
 /** F 폭발: 돛의 여섯 조각이 다 빛났으면 화면 전체가 형광으로, 아니면 작게 */
-function fBurst() {
+export function fBurst() {
   const full = S.glow >= 6;
   const x = boatX(), y = boatY() - 60;
   if (full) {
