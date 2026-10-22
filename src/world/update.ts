@@ -109,6 +109,8 @@ export function update(dt: number) {
   S.dry = ease(S.dry, S.dryT, 0.45, dt);
   S.storm = ease(S.storm, S.stormT, 0.8, dt);
   S.press = ease(S.press, S.pressT, 1.2, dt);
+  if (S.tug >= 0) S.tugView = ease(S.tugView, S.tug, 8, dt);
+  S.wallA = ease(S.wallA, S.tug >= 0 ? 1 : 0, 2.5, dt);
   S.ds = ease(S.ds, S.dsT, 0.7, dt);
   S.swap = ease(S.swap, S.swapT, 0.35, dt);
   S.sunk = ease(S.sunk, S.sunkT, 0.8, dt);

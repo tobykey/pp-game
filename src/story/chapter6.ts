@@ -212,7 +212,9 @@ const heartStep: StepHandler = {
   update(_dt, el) {
     const e = el - RECALL_DUR;
     // 회상이 끝나면 두 심장이 나란히
-    once('hearts', e > 0, () => { recall.t0 = -1; setTempo(65, 'heart'); S.heart2 = 2.2; S.heart2Off = 0.02; S.heart2Every = 1; });
+    // 회상 판은 스스로 1초에 걸쳐 걷히므로, 다 걷힌 뒤에 치운다 (한 프레임에 꺼지면 화면이 확 밝아짐)
+    once('recallOff', e > 1.2, () => { recall.t0 = -1; });
+    once('hearts', e > 0, () => { setTempo(65, 'heart'); S.heart2 = 2.2; S.heart2Off = 0.02; S.heart2Every = 1; });
     once('i1', e > 1.5, () => ink(TEXT6.heart1));
     // 하나가 느려진다: 두 박에 한 번 → 세 박에 한 번 → 멎는 듯 아주 약하게
     once('slow1', e > 7, () => { S.heart2Every = 2; S.heart2Off = 0.25; ink(TEXT6.heart2); });

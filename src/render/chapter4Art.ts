@@ -143,10 +143,10 @@ export function drawStorm() {
 }
 
 /** 물벽: x에 선 먹빛 파도 벽 */
-function drawWall(x: number, k: number) {
+function drawWall(x: number, k: number, a = 1) {
   const { H } = view, top = hz() - H * 0.28 * k - 20, base = sb() + 10;
   ctx.save();
-  ctx.globalAlpha = Math.min(1, 0.4 + k);
+  ctx.globalAlpha = Math.min(1, 0.4 + k) * a;
   ctx.fillStyle = 'rgba(23,20,15,.82)';
   ctx.beginPath(); ctx.moveTo(x, base);
   for (let i = 0; i <= 12; i++) {
@@ -157,17 +157,17 @@ function drawWall(x: number, k: number) {
   ctx.lineTo(view.W + 60, top + 20); ctx.lineTo(view.W + 60, base); ctx.closePath(); ctx.fill();
   // 물마루의 흰 거품
   ctx.strokeStyle = PAPER; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  for (let i = 0; i < 6; i++) { const y = top + 20 + i * 26; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(x - 10 + Math.sin(S.t * 4 + i) * 8, y); ctx.lineTo(x + 50, y + 8); ctx.stroke(); }
+  for (let i = 0; i < 6; i++) { const y = top + 20 + i * 26; ctx.globalAlpha = 0.5 * a; ctx.beginPath(); ctx.moveTo(x - 10 + Math.sin(S.t * 4 + i) * 8, y); ctx.lineTo(x + 50, y + 8); ctx.stroke(); }
   ctx.restore(); ctx.globalAlpha = 1;
 }
 
 /** 격돌: 물벽이 배 앞으로 다가온다 (게이지가 낮을수록 가깝다) */
 export function drawClashWall() {
-  if (S.tug < 0) return;
+  if (S.wallA < 0.01) return;
   const { W } = view, s = boatScale();
-  // 게이지가 낮을수록 물벽이 배에 가깝다
+  // 게이지가 낮을수록 물벽이 배에 가깝다. 위치·투명도 모두 부드럽게 (한 프레임에 크게 바뀌면 번쩍임처럼 보임)
   const near = boatX() + 150 * s, far = W * 0.95;
-  drawWall(near + (far - near) * S.tug, 1);
+  drawWall(near + (far - near) * Math.max(0, Math.min(1, S.tugView)), 1, S.wallA);
 }
 
 /** 격돌 게이지: 화면 위 줄다리기 (화면 배율과 상관없이 고정) */

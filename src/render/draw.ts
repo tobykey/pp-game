@@ -17,6 +17,7 @@ import { mark, profStart } from './prof';
 import { drawLives, drawRewind } from './rewindArt';
 import { drawHull } from './art/boatArt';
 import { drawLanternBody } from './art/props';
+import { drawBirds, drawBoatReflection, drawSun } from './art/ambience';
 import { allies, drawAllies, drawChoice, drawDuetStrings, drawEnding, drawRecall } from './chapter6Art';
 import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
 import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewrite, drawSunk, drawTruth, meLying, personWithGuitar, secondReflection } from './chapter5Art';
@@ -25,6 +26,7 @@ import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewr
 const PINK = '#ff2a7f';
 const wrap = (v: number, lo: number, hi: number) => { const p = hi - lo; return ((((v - lo) % p) + p) % p) + lo; };
 
+let lastDrawT = performance.now();
 export function draw() {
   const { W, H } = view;
   profStart();
@@ -50,6 +52,8 @@ export function draw() {
     const fx0 = playerX(), fy0 = boatY() - 20, z = 1 + 0.9 * S.zoom;
     ctx.translate(fx0, fy0); ctx.scale(z, z); ctx.translate(-fx0, -fy0);
   }
+  // 하늘의 옅은 해 (산 뒤)
+  drawSun(ctx, camPx);
   // 먼 산: 수묵 산 세 겹. 먼 산일수록 느리게 흐른다 (가로로 끝없이 이어 붙음)
   for (const m of backdrop.hills) {
     const off = ((-camPx * m.par) % m.w + m.w) % m.w - m.w;
@@ -58,6 +62,8 @@ export function draw() {
   ctx.strokeStyle = 'rgba(23,20,15,.35)'; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(0, hz() + 2); ctx.lineTo(W, hz() + 2); ctx.stroke();
   mark('mountains');
+  // 가끔 하늘을 건너가는 먹 새 (차분한 장면에서만)
+  { const nowT = performance.now(); drawBirds(ctx, S.paused ? 0 : Math.min(0.05, (nowT - lastDrawT) / 1000)); lastDrawT = nowT; }
   drawStorm();
   OBJ.filter(o => o.kind === 'isle').forEach(drawIsle);
   OBJ.filter(o => o.kind === 'painting').forEach(drawPainting);
@@ -103,6 +109,7 @@ export function draw() {
   drawClashWall();
   if (allies.length && S.tug >= 0) { const s = boatScale(), near = boatX() + 150 * s; drawAllies(near + (view.W * 0.95 - near) * S.tug); }
   drawGrounded();
+  drawBoatReflection(ctx);
   drawBoat(acc);
   mark('boat');
   drawSunk();

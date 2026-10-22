@@ -8,7 +8,7 @@ npm run dev
 ```
 터미널에 표시된 `http://localhost:5173` 주소를 브라우저에서 엽니다.
 
-- **장면 바로 가기:** 시작 화면의 "장면 바로 가기"에서 고르거나, 주소 뒤에 `?step=장면id`를 붙입니다. 예: `http://localhost:5173/?step=hook`
+- **장면 바로 가기:** 제목 화면의 "조작 안내 · 장면 바로 가기"를 펼쳐 고르거나, 주소 뒤에 `?step=장면id`를 붙입니다. 예: `http://localhost:5173/?step=hook`
   - 챕터 0: `wake` 눈뜸, `whisper` 속삭임, `row` 노 젓기, `lamps` 등불 찾기, `hook` 훅, `reflect` 물그림자, `cloth` 천 조각, `chorus` 후렴 1 예고, `island` 섬, `end` 챕터 0 끝
   - 챕터 1: `c1sail` 간주 항해, `c1snap` 줄이 끊어짐, `c1room` 밤의 방, `c1stage` 빈 무대, `c1thorn` 첫 번째 가시, `c1rain` 비, `c1after` 여운
   - 챕터 2: `c2frozen` 멈춘 비, `c2echo` 빗방울 되받아 치기, `c2umbrella` 우산 아래, `c2guard` 쏟아지는 비, `c2resolve` Csus4 → C, `c2end` 챕터 2 끝
@@ -27,7 +27,7 @@ npm run dev
 | `src/world/` | 게임 상태, 화면 배치, 매 프레임 갱신, 줄 튕기기, 박 시계·그루브(`rhythm.ts`), 노 젓기(`rowing.ts`) |
 | `src/input/` | 마우스 드래그(오른손), 키보드 코드(왼손) |
 | `src/audio/` | 기타 음색 합성(`engine.ts`), 심장·드럼·베이스(`kit.ts`) |
-| `src/render/` | 캔버스 그리기, 수묵·이펙트 |
+| `src/render/` | 캔버스 그리기, 수묵·이펙트. `art/` = 미리 그려 두는 붓 그림(한지·산·물·배·사물·방) |
 | `src/ui/` | HTML 화면 요소(목표 문구, 운지표, 배너, 붓글씨 안내) |
 | `prototype/` | 원본 단일 HTML 프로토타입 (손맛 기준, 수정하지 않음) |
 | `docs/` | 한눈에 보기(`overview.md`), 기획(`design.md`), 곡 구성표(`song-map.md`), 시나리오(`scenario-ch*.md`), 전체 이야기(`story.md`), 개발 일지(`devlog.md`), 확인할 것(`questions-for-toby.md`), 아이디어, 진행 보고서 |

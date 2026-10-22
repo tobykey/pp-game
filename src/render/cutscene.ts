@@ -5,6 +5,7 @@ import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 import { rand } from '../util/math';
 import { figure } from './figure';
+import { bedroom } from './art/bedroom';
 
 const PINK = '#ff2a7f';
 
@@ -268,34 +269,11 @@ const lerp = (a: number, b: number, k: number) => a + (b - a) * clamp01(k);
  */
 function drawBedside(t: number) {
   const { W, H } = view, s = Math.min(W, H) / 800;
-  // 밤: 위가 조금 어두운 먹빛
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, 'rgba(23,20,15,.28)'); g.addColorStop(1, 'rgba(23,20,15,.06)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  // 창과 달
-  const wx = W * 0.62, wy = H * 0.14;
-  ctx.lineWidth = 3; ctx.strokeRect(wx, wy, 150 * s, 190 * s);
-  ctx.beginPath(); ctx.moveTo(wx + 75 * s, wy); ctx.lineTo(wx + 75 * s, wy + 190 * s); ctx.stroke();
-  ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(wx + 40 * s, wy + 50 * s, 18 * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  // 바닥
-  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W * 0.06, H * 0.84); ctx.lineTo(W * 0.94, H * 0.84); ctx.stroke();
-  // 침대: 머리 쪽이 왼쪽
-  const bx = W * 0.4, by = H * 0.6, bw = W * 0.46, bh = 70 * s;
-  ctx.fillStyle = PAPER; ctx.lineWidth = 4;
-  ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh);
-  ctx.beginPath(); ctx.moveTo(bx, by + bh); ctx.lineTo(bx, H * 0.84); ctx.moveTo(bx + bw, by + bh); ctx.lineTo(bx + bw, H * 0.84); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(bx - 4, by - 70 * s); ctx.lineTo(bx - 4, H * 0.84); ctx.stroke(); // 머리판
-  // 베개와 잠든 나
-  ctx.fillStyle = PAPER; ctx.beginPath(); ctx.ellipse(bx + 50 * s, by - 6 * s, 44 * s, 18 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(bx + 54 * s, by - 18 * s, 17 * s, 0, Math.PI * 2); ctx.fill();
-  // 덮인 담요: 밤의 방에서 내가 거절했던 그 색
-  ctx.fillStyle = PINK; ctx.beginPath();
-  ctx.moveTo(bx + 80 * s, by + 4 * s); ctx.quadraticCurveTo(bx + bw * 0.5, by - 34 * s, bx + bw - 10 * s, by - 6 * s);
-  ctx.lineTo(bx + bw - 6 * s, by + bh * 0.7); ctx.lineTo(bx + 76 * s, by + bh * 0.7); ctx.closePath(); ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+  // 방·달빛·침대·잠든 나·의자는 붓으로 미리 그려 둔 그림 (art/bedroom.ts)
+  ctx.drawImage(bedroom(), 0, 0, W, H);
+  const bx = W * 0.4, by = H * 0.6;
   // 머리맡 의자에 앉아 기타를 치는 그 사람 (얼굴은 그리지 않는다)
   const px = W * 0.2, py = H * 0.8, k = 3.4 * s;
-  ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(px - 20 * s, py); ctx.lineTo(px - 20 * s, H * 0.84); ctx.moveTo(px + 90 * s, py); ctx.lineTo(px + 90 * s, H * 0.84); ctx.moveTo(px - 26 * s, py); ctx.lineTo(px + 96 * s, py); ctx.stroke();
   const strum = Math.sin(t * 7) * 3 * s;
   ctx.save(); ctx.translate(px, py - 4 * s + strum * 0.2); ctx.scale(k, k); ctx.fillStyle = INK_SOFT; ctx.strokeStyle = INK_SOFT; figure(); ctx.restore();
   // 소리의 파동: 기타에서 내 머리로 (게임 내내 긁어 온 소나)
