@@ -5,6 +5,7 @@ import { S, view } from '../world/state';
 import { boatScale, boatX, boatY, hz, sb, toScreenX } from '../world/geometry';
 import { grooveBeatPos } from '../world/rhythm';
 import { ctx } from './canvas';
+import { drawLighthouseBody } from './art/props';
 import { BRUSH, INK, INK_SOFT, PAPER, VOLT, reduceMotion } from './palette';
 
 const PINK = '#ff2a7f', BLUE = '#2f6bff';
@@ -26,12 +27,11 @@ export function drawLights() {
       g.addColorStop(0, l.chord === 'F' ? PINK : VOLT); g.addColorStop(1, 'rgba(255,226,61,0)');
       ctx.globalAlpha = 0.75; ctx.fillStyle = g; ctx.fillRect(-70, -118, 140, 140);
     }
-    ctx.globalAlpha = l.lit ? 1 : 0.45; ctx.fillStyle = INK;
-    ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(-6, -38); ctx.lineTo(6, -38); ctx.lineTo(9, 0); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-12, -38); ctx.lineTo(0, -54); ctx.lineTo(12, -38); ctx.fill();
-    ctx.fillStyle = l.lit ? VOLT : PAPER; ctx.fillRect(-3.5, -34, 7, 9);
+    // 등대 (art/props.ts). 불 켜는 방의 창만 따로
+    ctx.globalAlpha = l.lit ? 1 : 0.45; drawLighthouseBody(ctx);
+    ctx.fillStyle = l.lit ? VOLT : PAPER; ctx.fillRect(-4, -52, 8, 7);
     ctx.globalAlpha = l.lit ? 0.95 : 0.5; ctx.fillStyle = INK; ctx.font = `22px ${BRUSH}`; ctx.textAlign = 'center';
-    ctx.fillText(CHORDS[l.chord].label, 0, -60);
+    ctx.fillText(CHORDS[l.chord].label, 0, -74);
     ctx.restore();
   }
   ctx.globalAlpha = 1;

@@ -16,6 +16,7 @@ import { drawCut } from './cutscene';
 import { mark, profStart } from './prof';
 import { drawLives, drawRewind } from './rewindArt';
 import { drawHull } from './art/boatArt';
+import { drawLanternBody } from './art/props';
 import { allies, drawAllies, drawChoice, drawDuetStrings, drawEnding, drawRecall } from './chapter6Art';
 import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
 import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewrite, drawSunk, drawTruth, meLying, personWithGuitar, secondReflection } from './chapter5Art';
@@ -295,24 +296,23 @@ function drawLamp(o: WorldObj) {
   ctx.save(); ctx.translate(p.x, p.y + Math.sin(S.t * 1.6 + p.x) * 1.5);
   if (o.lit) {
     const big = o.lit >= 2 ? 1.25 : 1;
-    const g = ctx.createRadialGradient(0, -26, 2, 0, -26, 58 * big);
+    const g = ctx.createRadialGradient(0, -32, 2, 0, -32, 58 * big);
     g.addColorStop(0, acc); g.addColorStop(0.4, acc + '66'); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = 0.85 + 0.15 * Math.sin(S.t * 3); ctx.fillStyle = g; ctx.fillRect(-80, -100, 160, 150);
     ctx.globalAlpha = 0.55; ctx.strokeStyle = acc; ctx.lineWidth = 3; ctx.beginPath();
     for (let y = 4; y < 70; y += 3) ctx.lineTo(Math.sin(y * 0.35 + S.t * 4) * 3, y);
     ctx.stroke();
   }
-  ctx.globalAlpha = a; ctx.fillStyle = INK;
-  ctx.beginPath(); ctx.ellipse(0, 2, 14, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(-5, -26); ctx.lineTo(5, -26); ctx.lineTo(7, 0); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-11, -26); ctx.lineTo(0, -38); ctx.lineTo(11, -26); ctx.fill();
-  ctx.fillStyle = o.lit ? VOLT : PAPER; ctx.fillRect(-3.5, -22, 7, 8);
+  // 석등 (art/props.ts). 창의 불빛만 따로: 켜지면 형광 노랑
+  ctx.globalAlpha = a; drawLanternBody(ctx);
+  ctx.fillStyle = o.lit ? VOLT : 'rgba(234,230,222,.85)'; ctx.fillRect(-3, -35, 6, 6);
+  ctx.fillStyle = INK; ctx.fillRect(-0.5, -35, 1, 6);
   const showName = o.lit || o.found || o.detail > 0.15, lab = CHORDS[o.chord!].label;
   const la = o.lit ? 1 : showName ? Math.max(o.detail, o.found ? 0.65 : 0) * a : 0;
   if (la > 0.02) {
     ctx.globalAlpha = la; ctx.font = `${o.lit ? 34 : 28}px ${BRUSH}`; ctx.textAlign = 'center';
-    if (o.lit) { ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.strokeText(lab, 0, -46); ctx.fillStyle = VOLT; } else ctx.fillStyle = INK;
-    ctx.fillText(lab, 0, -46);
+    if (o.lit) { ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.strokeText(lab, 0, -58); ctx.fillStyle = VOLT; } else ctx.fillStyle = INK;
+    ctx.fillText(lab, 0, -58);
   }
   ctx.restore(); ctx.globalAlpha = 1;
 }

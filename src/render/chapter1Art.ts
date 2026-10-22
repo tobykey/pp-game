@@ -4,6 +4,7 @@ import { pos, toScreenX } from '../world/geometry';
 import { ctx } from './canvas';
 import { BRUSH } from './palette';
 import { figure } from './figure';
+import { drawRockBody } from './art/props';
 import { footprints, meetScene, segno } from './chapter2Art';
 import { otherScene } from './chapter5Art';
 import { INK, INK_SOFT, PAPER } from './palette';
@@ -175,11 +176,8 @@ export function drawRock(o: WorldObj) {
   const p = pos(o);
   if (p.x < -100 || p.x > view.W + 100) return;
   ctx.save(); ctx.translate(p.x, p.y);
-  ctx.globalAlpha = Math.max(0.6, o.vis); ctx.fillStyle = INK;
-  ctx.beginPath(); ctx.moveTo(-38, 8); ctx.lineTo(-30, -26); ctx.lineTo(-8, -46); ctx.lineTo(14, -38); ctx.lineTo(34, -18); ctx.lineTo(40, 8); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = PAPER; ctx.globalAlpha *= 0.35; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(-14, -36); ctx.lineTo(-4, -10); ctx.moveTo(12, -30); ctx.lineTo(22, -8); ctx.stroke();
-  ctx.globalAlpha = 0.2; ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(0, 10, 50, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // 먹 바위 (art/props.ts): 바위마다 모양이 조금씩 다르다
+  ctx.globalAlpha = Math.max(0.6, o.vis); drawRockBody(ctx, o.id.length + o.id.charCodeAt(o.id.length - 1));
   ctx.restore(); ctx.globalAlpha = 1;
   // 길을 막은 바위: 바위에서 줄까지 점선. 이 자리에서 긁어야 파동이 바위에 닿는다
   if (S.rockGuide === o.id) {
