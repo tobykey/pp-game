@@ -13,7 +13,8 @@ export function judgeBeat(record = true): { j: Judge; n: number; off: number } {
   const { n, off } = nearestBeat();
   const a = Math.abs(off);
   const base = Math.min(BEAT_WINDOW, spb() * 0.28);
-  const win = base * (1 + Math.min(0.6, misses * 0.15));
+  // 많이 놓칠수록, 그리고 같은 곳에서 되감길수록 (S.assist) 조금씩 너그러워진다
+  const win = base * (1 + Math.min(0.6, misses * 0.15)) * (1 + 0.2 * S.assist);
   const j: Judge = a <= Math.min(0.06, win * 0.4) ? 'perfect' : a <= win ? 'good' : 'miss';
   if (record) {
     misses = j === 'miss' ? misses + 1 : 0;

@@ -2,6 +2,7 @@
 // 마지막 후렴 → 마지막 관문(배운 기믹이 빨라지며 섞임, 코드 칩이 흐려짐) → 격돌 ②(혼자서는 못 이김)
 // → 그 사람이 일어나 함께 긁음(열두 줄, 모아 온 것들이 가세) → 두 박동 → B♭ 앞의 선택(pp) → 코다(F) → 엔딩
 import { CHORDS, type ChordId } from '../data/chords';
+import { endTrial, fail, startTrial } from './rewind';
 import { leaveSong, playSong } from './music';
 import { mrTail } from '../audio/mr';
 import { later } from '../world/timers';
@@ -65,18 +66,20 @@ const chorus: StepHandler = {
 
 // ---------- 6-2 마지막 관문 ----------
 // 후렴 16마디를 네 단계로. 단계마다 빨라지고, 파란 빛·노란 빛이 반 박 간격까지 촘촘해진다. 뒤 두 단계에선 코드 칩이 흐려진다
-let stage = 0, fOpen = false, fDone = false;
+let stage = 0, fOpen = false, fDone = false, gHits = 0;
 function startStage(i: number) {
   const g = GAUNTLET[i];
   stage = i; fOpen = false; fDone = false;
   if (i === 0) leaveSong(g.bpm, 'chorus', 0.3); else setTempo(g.bpm, 'chorus');
   counterWaves.length = 0; g.counters.forEach(c => counterWaves.push({ ...c, shown: false, done: false, hit: false }));
-  guardWaves.length = 0; g.guards.forEach(b => guardWaves.push({ beat: b, blocked: false, hit: false }));
+  gHits = 0; guardWaves.length = 0; g.guards.forEach(b => guardWaves.push({ beat: b, blocked: false, hit: false }));
   if (g.fade) { chipsFade(true); once('fadeInk', true, () => ink(TEXT6.gauntletChips)); }
 }
 const gauntlet: StepHandler = {
   enter() {
     S.gaugeOn = true; S.rainFallT = 0.6; // 노란 빗줄기가 보이도록
+    gHits = 0;
+    startTrial('c6gauntlet', ['노란 빛엔 Shift 누른 채 · 파란 빛엔 아주 세게', '노란 원 = 막기 · 파란 원 = 받아치기 · 원이 닿는 박에']);
     setBarChord(bar => CHORUS[(stage * 4 + bar) % 16] ?? null);
     startStage(0);
   },
@@ -84,6 +87,8 @@ const gauntlet: StepHandler = {
     const gb = grooveBeat(n);
     if (gb < 0) return;
     settleWaves(gb);
+    // 놓친 빛마다 박 하나가 쉼표로 (단계가 바뀌면 빛 목록이 새로 채워지므로 그 단계 안에서 센다)
+    { const hits = counterWaves.filter(w => w.hit).length + guardWaves.filter(w => w.hit).length; while (gHits < hits) { gHits++; if (fail()) return; } }
     const g = GAUNTLET[stage];
     if (gb % 4 === 0) {
       const bar = stage * 4 + gb / 4, c = CHORUS[bar % 16];
@@ -95,7 +100,7 @@ const gauntlet: StepHandler = {
     // 단계의 마지막 박에 다음 단계의 빠르기를 건다 (다음 마디 첫 박부터 새 템포)
     if (gb === 15) {
       if (stage < GAUNTLET.length - 1) startStage(stage + 1);
-      else { cue(null); S.gaugeOn = false; go('c6clash'); }
+      else { cue(null); S.gaugeOn = false; endTrial(); go('c6clash'); }
     }
   },
   update() {

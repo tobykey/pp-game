@@ -1,6 +1,7 @@
 // 챕터 1 '고집의 섬' 장면 진행 (문구·배치는 data/chapter1.ts, 시나리오는 docs/scenario-ch0-1.md 챕터 1)
 // 간주: 기타가 가장 크게 우는 마지막 구간 → 섬에 닿는 순간 줄이 끊어짐 → 1절: 베이스로 탐색
 import { CHORDS, type ChordId } from '../data/chords';
+import { endTrial, fail, startTrial } from './rewind';
 import { later } from '../world/timers';
 import {
   C1_START, INTERLUDE_BARS, PAINT_W, P_RAIN, P_ROOM, P_STAGE, RAIN_BARS, ROOM_SEQ, SNAP_AT, STAGE_BARS, STAGE_SEQ, TEXT1,
@@ -224,7 +225,8 @@ const thornStep: StepHandler = {
     S.vortexT = 0.5;
     obj('thorn').hidden = false;
     setProgress(TEXT1.progressHold(0));
-    ink(TEXT1.hold);
+    // 네 박의 기회: 박을 놓칠 때마다 하나씩 쉼표가 된다. 되감겨 왔으면 안내가 붙는다
+    if (!startTrial('c1thorn', ['쿵, 하고 울릴 때 · 아래로 · 위로', '박 안내 원이 닿는 순간에 긁어요'])) ink(TEXT1.hold);
   },
   beat() {
     // 소용돌이가 배를 흔든다. 버틸수록 거세진다
@@ -244,11 +246,12 @@ const thornStep: StepHandler = {
     if (thornPhase === 'hold') {
       const r = row(s.dir);
       S.vel = 0;
+      if (r === 'miss' && fail()) return;
       S.meter = Math.max(0, Math.min(1, S.meter + (r === 'miss' ? -0.08 : 1 / 6)));
       setProgress(TEXT1.progressHold(Math.round(S.meter * 6)));
       if (S.meter >= 1) {
         // 다 버텼다: 세상이 어두워지고 가시만 빛난다. 화면 가득 'C!'
-        thornPhase = 'pull';
+        thornPhase = 'pull'; endTrial();
         S.dimT = 0.55;
         setObjective(TEXT1.pull); setProgress('');
         pullCue('C');

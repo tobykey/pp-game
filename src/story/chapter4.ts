@@ -1,6 +1,7 @@
 // 챕터 4 '마른 바다 → 폭풍' 장면 진행 (문구는 data/chapter4.ts, 시나리오는 docs/scenario-ch4.md)
 // 물이 빠진다 → 마른 바다(자유 솔로) → 물이 돌아온다 → 폭풍(가드 + 카운터) → 격돌 ①(폭주 스트로크) → D♭ 가시 → D.S.
 import { CHORDS, type ChordId } from '../data/chords';
+import { endTrial, fail, startTrial } from './rewind';
 import { leaveSong, playSong } from './music';
 import { later } from '../world/timers';
 import { C4_START, CLASH_BPMS, RIFF, SOLO_DIST, STORM_COUNTERS, STORM_GUARDS, TEXT4 } from '../data/chapter4';
@@ -156,7 +157,7 @@ const clash: StepHandler = {
     setBarChord(null); // 템포가 바뀔 때마다 그루브 마디 세기가 처음으로 돌아가므로, 베이스는 장면이 잡은 코드(S.forced)를 따른다
     S.pressT = 0.2;
     cue(TEXT4.clashCue, 'rock');
-    ink(TEXT4.clashHint);
+    if (!startTrial('c4clash', ['박은 잊고 · 아래위로 쉬지 말고', '세게 긁을수록 더 밀어낸다'])) ink(TEXT4.clashHint);
   },
   beat() {
     if (clashEnded) return;
@@ -176,13 +177,14 @@ const clash: StepHandler = {
     once('hintOff', el > 3, () => ink(null));
     // 손을 멈추면 물벽이 밀려온다. 오래 버티면 몰래 조금 덜 밀린다
     const assist = Math.max(0.6, 1 - Math.max(0, el - 25) * 0.02);
-    S.tug -= dt * (0.09 + 0.022 * ci) * assist;
+    S.tug -= dt * (0.09 + 0.022 * ci) * assist * (1 - 0.15 * S.assist);
     // 마지막 템포 전에는 끝까지 밀어낼 수 없다 (몰아치는 시간을 지킨다)
     const cap = ci < CLASH_BPMS.length - 1 ? 0.55 + 0.1 * ci : 1;
     S.tug = Math.min(cap, S.tug);
     if (!reduceMotion) S.shake = Math.max(S.shake, 1 + 2 * ci * (1 - S.tug));
     if (S.tug <= 0) {
-      // 밀렸다: 배가 크게 흔들리지만 끝은 아니다
+      // 밀렸다: 박 하나를 잃는다. 넷 다 잃으면 꿈이 되감긴다
+      if (fail()) { clashEnded = true; S.tug = -1; cue(null); return; }
       S.tug = 0.3; S.wobble += 0.25; lastLost = el;
       splash(boatX() + 80, boatY() - 30, 40, 1, INK);
       ink(TEXT4.clashAgain);
@@ -200,7 +202,7 @@ const clash: StepHandler = {
 };
 
 function winClash() {
-  clashEnded = true;
+  clashEnded = true; endTrial();
   S.tug = 1;
   cue(null); ink(TEXT4.clashWon);
   S.pressT = 0; S.punchT = 1; later(() => { S.punchT = 0; }, 250);

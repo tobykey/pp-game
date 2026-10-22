@@ -10,7 +10,7 @@ function noise(ac: AudioContext) {
 }
 
 /** 아래로 떨어지는 사인파 한 번 (심장·킥의 몸통) */
-function thump(t: number, f0: number, f1: number, dur: number, peak: number, pan = 0) {
+export function thump(t: number, f0: number, f1: number, dur: number, peak: number, pan = 0) {
   const o = audioOut(); if (!o) return;
   const { ac, out } = o;
   const osc = ac.createOscillator(), g = ac.createGain();

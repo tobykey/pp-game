@@ -207,6 +207,14 @@ export const S = {
   heart2Off: 0.29, heart2Every: 1,
   /** 마지막 선택 (빈 문자열 = 아직) */
   ending: '' as '' | 'keep' | 'give',
+
+  // 큰 기믹의 '네 박' 기회와 되감기
+  /** 남은 기회 (마디의 네 박). 음수면 기회가 보이지 않는 장면 */
+  lives: -1,
+  /** 꿈이 되감기는 연출 (1 → 0) */
+  rewind: 0,
+  /** 같은 곳에서 되감긴 횟수만큼 판정이 너그러워진다 (0~3) */
+  assist: 0,
 };
 
 export interface StringState { amp: number; ph: number; hot: number }

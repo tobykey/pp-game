@@ -1,6 +1,7 @@
 // 챕터 3 '돛' 장면 진행 (문구는 data/chapter3.ts, 시나리오는 docs/scenario-ch3.md)
 // 바람이 모자라다 → 희망의 돛(하얀 빛 속 두 조각) → 등대의 바다(공명 카운터 + F 폭발) → F의 문과 A♭ 가시 → 바람을 안고
 import { CHORDS, type ChordId } from '../data/chords';
+import { endTrial, fail, startTrial } from './rewind';
 import { leaveSong, playSong } from './music';
 import { later } from '../world/timers';
 import { C3_START, CHORUS2, COUNTERS, F_BARS, GATE_BARS, TEXT3 } from '../data/chapter3';
@@ -154,7 +155,7 @@ export function fBurst() {
 }
 
 // ---------- 3-5 F의 문과 A♭ 가시 ----------
-let gatePhase: 'hold' | 'pull' | 'done' = 'hold', nextWave = 0;
+let gatePhase: 'hold' | 'pull' | 'done' = 'hold', nextWave = 0, gateHits = 0;
 const gate: StepHandler = {
   enter() {
     gatePhase = 'hold';
@@ -167,13 +168,16 @@ const gate: StepHandler = {
     lights.length = 0;
     lights.push({ wx: S.boat + 0.5, chord: 'F', lit: false, up: true });
     S.vortexT = 0.4;
-    counterWaves.length = 0; nextWave = 3;
+    counterWaves.length = 0; nextWave = 3; gateHits = 0;
+    startTrial('c3gate', ['파란 빛이 짠! · 원이 닿는 박에 아주 세게', '파란 빛이 뜨면 · 한 박 기다렸다가 세게']);
     setProgress(TEXT3.progressGate(0));
   },
   beat(n) {
     const gb = grooveBeat(n);
     if (gb < 0) return;
     settleWaves(gb);
+    // 놓친 파란 빛마다 박 하나가 쉼표로
+    if (gatePhase === 'hold') { const hits = counterWaves.filter(w => w.hit).length; while (gateHits < hits) { gateHits++; if (fail()) return; } }
     if (gb % 4 === 0) { const c = GATE_BARS[(gb / 4) % GATE_BARS.length]; if (gatePhase === 'hold') { S.forced = c; resolveChord(); } }
     // 버티는 동안 두 박마다 파란 빛 (정박에 나타나 다음 정박에 받아치기)
     if (gatePhase === 'hold' && gb + 2 >= nextWave) { counterWaves.push({ beat: nextWave, lead: 1, shown: false, done: false, hit: false }); nextWave += 2; }
@@ -190,7 +194,7 @@ const gate: StepHandler = {
         setProgress(TEXT3.progressGate(Math.round(S.meter * 6)));
         if (S.meter >= 1) {
           // 다 버텼다: 세상이 어두워지고 가시만 빛난다. 화면 가득 '가시 뽑기 F'
-          gatePhase = 'pull';
+          gatePhase = 'pull'; endTrial();
           S.forced = null; resolveChord();
           counterWaves.length = 0; S.counterCue = false;
           S.dimT = 0.55;

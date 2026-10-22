@@ -50,6 +50,8 @@ export function go(id: StepId) {
   setProgress('');
   save(id);
   S.nextChord = null;
+  // 큰 기믹의 네 박 기회는 그 장면이 다시 채운다 (다른 장면으로 가면 거둠)
+  S.lives = -1; S.assist = 0;
   // 기본 조작을 다 배운 뒤(등불 찾기부터)에는 아래 조작 안내 줄이 사라진다
   if (!before(id, 'lamps')) fadeHelp();
   cur = handlers[id];
@@ -61,7 +63,7 @@ export const elapsed = () => el;
 export function updateStory(dt: number) { el += dt; cur.update?.(dt, el); }
 /** 마지막 스트로크 (자동 테스트·조율용) */
 export const lastStroke = { dyn: 0, chord: 'open' as ChordId };
-export function onStroke(s: Stroke) { lastStroke.dyn = s.dyn; lastStroke.chord = s.chord; if (S.started && !cutActive()) cur.stroke?.(s); }
+export function onStroke(s: Stroke) { lastStroke.dyn = s.dyn; lastStroke.chord = s.chord; if (S.started && !cutActive() && S.rewind < 0.05) cur.stroke?.(s); }
 export function onPluck() { if (S.started) cur.pluck?.(); }
 export function onSweep(s: Sweep) { if (S.started) cur.sweep?.(s); }
 export function onBeat(n: number) { cur.beat?.(n); }

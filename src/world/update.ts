@@ -105,6 +105,7 @@ export function update(dt: number) {
   S.glowPop = Math.max(0, S.glowPop - dt * 2.5);
   S.punch = ease(S.punch, S.punchT, S.punchT > S.punch ? 12 : 1.4, dt);
   S.fburst = Math.max(0, S.fburst - dt * 0.38);
+  S.rewind = Math.max(0, S.rewind - dt * 0.5);
   S.dry = ease(S.dry, S.dryT, 0.45, dt);
   S.storm = ease(S.storm, S.stormT, 0.8, dt);
   S.press = ease(S.press, S.pressT, 1.2, dt);

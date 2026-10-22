@@ -14,6 +14,7 @@ import { backdrop, ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
 import { drawCut } from './cutscene';
 import { mark, profStart } from './prof';
+import { drawLives, drawRewind } from './rewindArt';
 import { allies, drawAllies, drawChoice, drawDuetStrings, drawEnding, drawRecall } from './chapter6Art';
 import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
 import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewrite, drawSunk, drawTruth, meLying, personWithGuitar, secondReflection } from './chapter5Art';
@@ -182,6 +183,7 @@ export function draw() {
   mark('overlays');
   drawScore(acc);
   drawDyn(acc);
+  drawLives();
   mark('score+dyn');
   // 눈뜸: 하얀 빛 속에서 세상이 떠오른다
   if (S.reveal < 1) { ctx.globalAlpha = 1 - S.reveal; ctx.drawImage(backdrop.paper!, -40, -40, W + 80, H + 80); ctx.globalAlpha = 1; }
@@ -198,6 +200,7 @@ export function draw() {
   drawWhite();
   // 눈뜸: 눈을 감은 어둠
   if (S.black > 0.001) { ctx.globalAlpha = S.black; ctx.fillStyle = '#0b0a08'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  drawRewind();
   drawRecall();
   drawEnding();
   drawCut();
