@@ -2,6 +2,7 @@
 import { S, view, type WorldObj } from '../world/state';
 import { boatScale, boatX, boatY, camX, hz, pos, sb, toScreenX } from '../world/geometry';
 import { ctx } from './canvas';
+import { makeDryArt } from './art/backdrops';
 import { BRUSH, INK, INK_SOFT, PAPER, VOLT, reduceMotion } from './palette';
 
 const PINK = '#ff2a7f';
@@ -15,36 +16,15 @@ export const crackTexts: { wx: number; ry: number; txt: string; t0: number }[] =
 function rnd(seed: number) { const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
 const ryToY = (ry: number) => hz() + (sb() - hz()) * ry;
 
-/** 마른 바닥: 물결을 덮는 흙빛 한지 + 갈필 균열 (세계에 붙어 있다) */
+/** 마른 바닥: 미리 그려 둔 갈라진 진흙(art/backdrops.ts)을 세계에 붙여 흐르게 한다 */
+let dryArt: ReturnType<typeof makeDryArt> | null = null, dryKey = '';
 export function drawDrySea() {
   if (S.dry < 0.01) return;
-  const { W } = view, top = hz() + 2, bot = sb() + 12;
-  ctx.save();
-  ctx.globalAlpha = S.dry;
-  const g = ctx.createLinearGradient(0, top, 0, bot);
-  g.addColorStop(0, '#d9d0bf'); g.addColorStop(1, '#cbbfa8');
-  ctx.fillStyle = g; ctx.fillRect(0, top, W, bot - top);
-  // 균열: 화면 너비 0.25마다 하나의 균열 묶음
-  ctx.strokeStyle = INK; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  const cam = camX(), i0 = Math.floor((cam - 0.6) / 0.25), i1 = Math.ceil((cam + 0.6) / 0.25);
-  for (let i = i0; i <= i1; i++) {
-    for (let k = 0; k < 3; k++) {
-      const seed = i * 7 + k * 131;
-      const wx = i * 0.25 + rnd(seed) * 0.25, ry = 0.12 + rnd(seed + 1) * 0.82;
-      let x = toScreenX(wx), y = ryToY(ry);
-      const n = 4 + Math.floor(rnd(seed + 2) * 4), depth = 0.4 + 0.6 * ry;
-      ctx.globalAlpha = S.dry * (0.25 + 0.45 * depth); ctx.lineWidth = 0.8 + 1.8 * depth;
-      ctx.beginPath(); ctx.moveTo(x, y);
-      for (let j = 0; j < n; j++) {
-        x += (14 + rnd(seed + j * 3) * 40) * depth * (rnd(seed + j) > 0.5 ? 1 : -0.6);
-        y += (rnd(seed + j * 5) - 0.5) * 12 * depth;
-        ctx.lineTo(x, y);
-        // 잔가지
-        if (rnd(seed + j * 11) > 0.6) { ctx.moveTo(x, y); ctx.lineTo(x + (rnd(seed + j) - 0.5) * 20 * depth, y + 8 * depth); ctx.moveTo(x, y); }
-      }
-      ctx.stroke();
-    }
-  }
+  const { W, H } = view, key = W + 'x' + H;
+  if (!dryArt || key !== dryKey) { dryArt = makeDryArt(); dryKey = key; }
+  const top = hz() + 2, off = ((-camX() * W) % dryArt.w + dryArt.w) % dryArt.w - dryArt.w;
+  ctx.save(); ctx.globalAlpha = S.dry;
+  for (let x = off; x < W; x += dryArt.w) ctx.drawImage(dryArt.img, x, top, dryArt.w, dryArt.h);
   ctx.restore(); ctx.globalAlpha = 1;
 }
 

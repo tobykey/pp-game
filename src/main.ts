@@ -47,6 +47,8 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 addEventListener('resize', resize);
+// 제목 화면 뒤로는 줄 없이 바다와 산만 (시작하면 장면이 줄을 다시 띄운다)
+S.stringsVis = 0;
 resize(); updateChips(); requestAnimationFrame(frame);
 document.fonts?.load(`30px "Nanum Brush Script"`).catch(() => {});
 

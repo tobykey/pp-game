@@ -25,10 +25,18 @@ export function drawPainting(o: WorldObj) {
   if (f.x > W * 1.4 || f.x + f.w < -W * 0.4) return;
   const a = Math.min(1, o.vis);
   ctx.save();
-  // 액자: 한지 + 먹 테두리
-  ctx.globalAlpha = 0.88 * a; ctx.fillStyle = PAPER; ctx.fillRect(f.x, f.y, f.w, f.h);
-  ctx.globalAlpha = a; ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(f.x, f.y, f.w, f.h);
-  ctx.globalAlpha = 0.4 * a; ctx.lineWidth = 1; ctx.strokeRect(f.x + 6, f.y + 6, f.w - 12, f.h - 12);
+  // 표구: 비단 테두리(옅은 쪽빛 회색) 안에 한지 그림, 위아래에 나무 축. 물 위에 뜬 그림자
+  const m = 7;
+  ctx.globalAlpha = 0.18 * a; ctx.fillStyle = INK; ctx.fillRect(f.x - m + 5, f.y - m + 7, f.w + m * 2, f.h + m * 2);
+  ctx.globalAlpha = 0.92 * a; ctx.fillStyle = '#c9cbc6'; ctx.fillRect(f.x - m, f.y - m, f.w + m * 2, f.h + m * 2);
+  ctx.globalAlpha = 0.25 * a; ctx.strokeStyle = '#8d918c'; ctx.lineWidth = 1;
+  for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(f.x - m, f.y - m + 2 + k * 1.5); ctx.lineTo(f.x + f.w + m, f.y - m + 2 + k * 1.5); ctx.stroke(); }
+  ctx.globalAlpha = 0.95 * a; ctx.fillStyle = PAPER; ctx.fillRect(f.x, f.y, f.w, f.h);
+  ctx.globalAlpha = 0.5 * a; ctx.strokeStyle = INK; ctx.lineWidth = 0.8; ctx.strokeRect(f.x, f.y, f.w, f.h);
+  // 나무 축
+  ctx.globalAlpha = a; ctx.fillStyle = '#3a2f24';
+  ctx.fillRect(f.x - m - 6, f.y - m - 4, f.w + m * 2 + 12, 4); ctx.fillRect(f.x - m - 8, f.y + f.h + m, f.w + m * 2 + 16, 5);
+  ctx.fillStyle = '#1e1913'; ctx.fillRect(f.x - m - 12, f.y + f.h + m - 1, 6, 7); ctx.fillRect(f.x + f.w + m + 6, f.y + f.h + m - 1, 6, 7);
   // 장면은 액자 안에만
   ctx.save(); ctx.beginPath(); ctx.rect(f.x + 6, f.y + 6, f.w - 12, f.h - 12); ctx.clip();
   ctx.globalAlpha = a; ctx.fillStyle = INK; ctx.strokeStyle = INK;

@@ -136,3 +136,61 @@ export function makeSeaStrokes(): HTMLCanvasElement[] {
   }
   return out;
 }
+
+/**
+ * 마른 바닥: 갈라진 진흙의 다각형 균열망. 멀수록(위로 갈수록) 칸이 작아지고 선이 가늘다.
+ * 가로로 이어 붙는 한 장 (폭 P)
+ */
+export function makeDryArt(): { img: HTMLCanvasElement; w: number; h: number } {
+  const { W, DPR } = view, top = hz() + 2, h = sb() + 12 - top, P = Math.round(W * 1.25);
+  const { c, g } = canvas(P, h, Math.min(DPR, 1.5));
+  // 흙빛 바탕 + 얼룩
+  const base = g.createLinearGradient(0, 0, 0, h);
+  base.addColorStop(0, '#d8cfbe'); base.addColorStop(1, '#c9bca4');
+  g.fillStyle = base; g.fillRect(0, 0, P, h);
+  {
+    const lw = Math.ceil(P / 5), lh = Math.ceil(h / 5), m = document.createElement('canvas'); m.width = lw; m.height = lh;
+    const mg = m.getContext('2d')!, img = mg.createImageData(lw, lh);
+    for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++) {
+      const n = fbm((x / lw) * 10, y / 14, 61, 4, 10), k = (y * lw + x) * 4;
+      img.data[k] = 120; img.data[k + 1] = 100; img.data[k + 2] = 72; img.data[k + 3] = Math.round(Math.max(0, n - 0.45) * 0.5 * 255);
+    }
+    mg.putImageData(img, 0, 0); g.drawImage(m, 0, 0, P, h);
+  }
+  // 균열망: 줄마다 칸 크기가 다른 격자점을 흔들어, 이웃끼리 잇는다
+  const r = rng(91);
+  const rows: { y: number; xs: number[]; d: number }[] = [];
+  let y = 2;
+  while (y < h + 10) {
+    const d = Math.min(1, y / h), cell = 18 + 70 * d * d, n = Math.max(6, Math.round(P / cell));
+    const xs: number[] = [];
+    for (let i = 0; i < n; i++) xs.push((i + 0.5 + (r() - 0.5) * 0.7) * (P / n));
+    rows.push({ y: y + (r() - 0.5) * 4 * (1 + d * 3), xs, d });
+    y += 5 + 34 * d * d;
+  }
+  const crack = (x0: number, y0: number, x1: number, y1: number, d: number) => {
+    // 갈라진 선은 곧지 않다: 중간을 한 번 꺾고, 굵기는 가까울수록 굵다
+    const mx = (x0 + x1) / 2 + (r() - 0.5) * 10 * (0.3 + d), my = (y0 + y1) / 2 + (r() - 0.5) * 6 * (0.3 + d);
+    g.lineWidth = 0.5 + 2.2 * d * (0.5 + r()); g.globalAlpha = 0.25 + 0.5 * d;
+    // 가장자리를 넘는 균열은 반대쪽에도 그려, 이어 붙인 자리에서 끊기지 않게
+    for (const sh of [-P, 0, P]) { g.beginPath(); g.moveTo(x0 + sh, y0); g.lineTo(mx + sh, my); g.lineTo(x1 + sh, y1); g.stroke(); }
+  };
+  g.strokeStyle = INK; g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i], next = rows[i + 1];
+    // 같은 줄의 이웃 (가로 균열, 군데군데만)
+    for (let j = 0; j < row.xs.length; j++) {
+      const x0 = row.xs[j], x1 = j + 1 < row.xs.length ? row.xs[j + 1] : row.xs[0] + P;
+      if (r() < 0.55) crack(x0, row.y, x1, row.y + (r() - 0.5) * 6, row.d);
+    }
+    // 아래 줄로 (세로 균열)
+    if (next) for (const x of row.xs) {
+      let best = next.xs[0], bd = 1e9;
+      for (const nx of next.xs) { const dd = Math.abs(nx - x); if (dd < bd) { bd = dd; best = nx; } }
+      if (r() < 0.8) crack(x, row.y, best, next.y, (row.d + next.d) / 2);
+    }
+  }
+  g.globalAlpha = 1;
+  // 이어 붙는 가장자리: 왼쪽 끝을 오른쪽 끝에 한 번 더 겹쳐 그려 이음매를 숨긴다
+  return { img: c, w: P, h };
+}

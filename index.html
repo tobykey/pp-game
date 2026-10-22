@@ -76,24 +76,32 @@
 
 <div class="start" id="start">
   <div class="card">
-    <h1>pp<span>피아니시모</span></h1>
-    <p class="sub">챕터 0 · 안개. 안개 낀 바다에서 현을 긁으면 파동이 퍼지고, 숨은 것들이 드러납니다.</p>
-    <dl>
-      <dt>왼손</dt><dd>키보드 키를 함께 눌러 코드를 잡습니다. 위쪽 칩이 운지표예요. 터치 화면에선 칩을 눌러 고정합니다.</dd>
-      <dt>오른손</dt><dd>아래 여섯 줄 위로 드래그. 긁는 위치가 파동이 시작되는 곳입니다.</dd>
-      <dt>세기</dt><dd>빠를수록 ff, 느릴수록 pp. 세게 치면 멀리 퍼지지만 지워지는 것도 있어요.</dd>
-      <dt>줄</dt><dd>굵은 6번 줄은 멀리, 가는 1번 줄은 가까이 닿는 대신 글씨까지 보여줍니다.</dd>
-      <dt>노</dt><dd>박동에 맞춰 아래로 한 번, 위로 한 번 긁으면 노를 젓습니다.</dd>
-      <dt>음색</dt><dd>1–4 키로 락 · 어쿠스틱 · 현악 · 국악 편곡을 바꿉니다.</dd>
-    </dl>
+    <div class="title">
+      <h1 aria-label="pp 피아니시모"><span class="p1">p</span><span class="p2">p</span></h1>
+      <div class="seal" aria-hidden="true">여리<br>게</div>
+      <p class="tate">피아니시모</p>
+    </div>
+    <p class="tag">안개 낀 바다에서, 여섯 줄을 긁어 길을 찾는다</p>
+    <div class="spacer"></div>
     <div class="starts">
       <button class="go" id="go">현을 깨우기</button>
       <button class="cont" id="cont" hidden></button>
     </div>
-    <p class="note">소리가 납니다. 헤드폰을 권해요. 박을 들어야 하는 게임이라 소리를 켜 주세요.</p>
-    <label class="jump">장면 바로 가기 (확인용)
-      <select id="jump"><option value="">처음부터</option></select>
-    </label>
+    <p class="note">소리가 납니다 · 헤드폰을 권해요 · 박을 들어야 하는 게임이에요</p>
+    <details class="howto">
+      <summary>조작 안내 · 장면 바로 가기</summary>
+      <dl>
+        <dt>왼손</dt><dd>키보드 키를 함께 눌러 코드를 잡습니다. 위쪽 칩이 운지표예요. 터치 화면에선 칩을 눌러 고정합니다.</dd>
+        <dt>오른손</dt><dd>아래 여섯 줄 위로 드래그. 긁는 위치가 파동이 시작되는 곳입니다.</dd>
+        <dt>세기</dt><dd>빠를수록 ff, 느릴수록 pp. 세게 치면 멀리 퍼지지만 지워지는 것도 있어요.</dd>
+        <dt>줄</dt><dd>굵은 6번 줄은 멀리, 가는 1번 줄은 가까이 닿는 대신 글씨까지 보여줍니다.</dd>
+        <dt>노</dt><dd>박동에 맞춰 아래로 한 번, 위로 한 번 긁으면 노를 젓습니다.</dd>
+        <dt>음색</dt><dd>1–4 키로 락 · 어쿠스틱 · 현악 · 국악 편곡을 바꿉니다.</dd>
+      </dl>
+      <label class="jump">장면 바로 가기 (확인용)
+        <select id="jump"><option value="">처음부터</option></select>
+      </label>
+    </details>
   </div>
 </div>
 

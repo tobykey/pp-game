@@ -180,8 +180,8 @@ export function draw() {
     }
   }
   mark('overlays');
-  drawScore(acc);
-  drawDyn(acc);
+  // 제목 화면에서는 악보·셈여림을 그리지 않는다 (바다와 배만)
+  if (S.started) { drawScore(acc); drawDyn(acc); }
   drawLives();
   mark('score+dyn');
   // 눈뜸: 하얀 빛 속에서 세상이 떠오른다
@@ -235,13 +235,22 @@ function drawIsle(o: WorldObj) {
 }
 
 function drawRipples() {
+  // 물에 먹 한 방울이 번지는 동심원: 붓이 끊기듯 군데군데 비는 고리 + 안쪽에 옅게 번진 먹 (매끈한 선이 아니라 붓 자국으로)
   ctx.save(); ctx.beginPath(); ctx.rect(0, hz() + 2, view.W, sb() - hz() + 10); ctx.clip();
+  ctx.lineCap = 'round';
   for (const r of fx.rip) {
     const k = 1 - r.r / r.max, a = k * (0.18 + 0.55 * r.dyn + 0.12), x = toScreenX(r.wx);
+    const seed = (r.wx * 997) % 7, circ = Math.PI * 2 * r.r;
+    // 굵은 고리: 길게 그었다 짧게 끊기는 붓
     ctx.strokeStyle = INK; ctx.globalAlpha = a; ctx.lineWidth = 0.8 + (1 - r.t) * 2.4 + r.dyn * 2.2;
+    ctx.setLineDash([circ * (0.18 + 0.04 * seed), circ * 0.025, circ * 0.11, circ * 0.018]);
+    ctx.lineDashOffset = seed * 30 + r.r * 0.2;
     ctx.beginPath(); ctx.ellipse(x, r.y, r.r, r.r * 0.36, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.globalAlpha = a * 0.45; ctx.lineWidth = 0.7;
-    ctx.beginPath(); ctx.ellipse(x, r.y, r.r * 0.9, r.r * 0.324, 0, 0, Math.PI * 2); ctx.stroke();
+    // 옅게 번진 안쪽 고리
+    ctx.globalAlpha = a * 0.35; ctx.lineWidth = 3 + r.dyn * 4;
+    ctx.setLineDash([circ * 0.07, circ * 0.05]); ctx.lineDashOffset = -r.r * 0.3;
+    ctx.beginPath(); ctx.ellipse(x, r.y, r.r * 0.92, r.r * 0.33, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
     if (r.dyn > 0.62) {
       ctx.strokeStyle = r.acc; ctx.globalAlpha = k * (r.dyn - 0.5) * 1.6; ctx.lineWidth = 1.6 + r.dyn * 2;
       ctx.beginPath(); ctx.ellipse(x, r.y, r.r * 0.96, r.r * 0.346, 0, 0, Math.PI * 2); ctx.stroke();
@@ -550,7 +559,7 @@ function drawStrings(acc: string) {
   ctx.moveTo(x0, stringY(0) - 10); ctx.lineTo(x0, stringY(5) + 10); ctx.moveTo(x1, stringY(0) - 10); ctx.lineTo(x1, stringY(5) + 10);
   ctx.stroke();
   for (let i = 0; i < 6; i++) {
-    const y = stringY(i), s = str[i], th = lerp(4.4, 1.3, i / 5), N = 56;
+    const y = stringY(i), s = str[i], th = lerp(3.6, 1.1, i / 5), N = 56;
     const path = () => {
       ctx.beginPath();
       for (let k = 0; k <= N; k++) {
@@ -569,7 +578,7 @@ function drawStrings(acc: string) {
       ctx.fillText(String(6 - i), x0 + 6, y - 5);
       continue;
     }
-    ctx.strokeStyle = INK; ctx.globalAlpha = 0.92 * base; ctx.lineWidth = th; path(); ctx.stroke();
+    ctx.strokeStyle = INK; ctx.globalAlpha = 0.82 * base; ctx.lineWidth = th; path(); ctx.stroke();
     ctx.globalAlpha = 0.25 * base; ctx.lineWidth = th * 0.5; ctx.setLineDash([26, 7, 10, 5]); ctx.lineDashOffset = i * 13;
     ctx.save(); ctx.translate(0, th * 0.45); path(); ctx.stroke(); ctx.restore(); ctx.setLineDash([]);
     if (s.hot > 0.62 && s.amp > 1.2) {
