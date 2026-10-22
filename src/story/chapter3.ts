@@ -1,6 +1,8 @@
 // 챕터 3 '돛' 장면 진행 (문구는 data/chapter3.ts, 시나리오는 docs/scenario-ch3.md)
 // 바람이 모자라다 → 희망의 돛(하얀 빛 속 두 조각) → 등대의 바다(공명 카운터 + F 폭발) → F의 문과 A♭ 가시 → 바람을 안고
 import { CHORDS, type ChordId } from '../data/chords';
+import { leaveSong, playSong } from './music';
+import { later } from '../world/timers';
 import { C3_START, CHORUS2, COUNTERS, F_BARS, GATE_BARS, TEXT3 } from '../data/chapter3';
 import { before, type StepId } from '../data/steps';
 import { audioOut, playNote } from '../audio/engine';
@@ -72,7 +74,8 @@ const sea: StepHandler = {
   enter() {
     fBar = -1; fDone = false; seaEnded = false;
     S.glow = 0; S.gaugeOn = true;
-    setTempo(130, 'chorus');
+    // 원곡의 후렴 2, 16마디 (MR이 없으면 합성 그루브)
+    playSong([['chorus2', CHORUS2.length]], 130, 'chorus');
     setBarChord(bar => CHORUS2[bar] ?? null);
     S.cruise = 0.12;
     unlock(['Db', 'Eb', 'Cm', 'F', 'Fsus4']);
@@ -130,11 +133,11 @@ export function fBurst() {
     ink(null);
     // 한순간 시간이 멈췄다가(히트스톱) 터진다
     S.timeScale = 0.06;
-    setTimeout(() => {
+    later(() => {
       S.timeScale = 1;
       S.fburst = 1; S.burst = 1;
-      S.punchT = 1; setTimeout(() => { S.punchT = 0; }, 260);
-      S.visionT = 1; setTimeout(() => { S.visionT = 0; }, 2200);
+      S.punchT = 1; later(() => { S.punchT = 0; }, 260);
+      S.visionT = 1; later(() => { S.visionT = 0; }, 2200);
       if (!reduceMotion) S.shake = Math.max(S.shake, 16);
       const a = audioOut(); if (a) crash(a.ac.currentTime, 1.6);
       for (let j = 0; j < 60; j++) fx.lines.push({ x, y, a: rand(-Math.PI, Math.PI), l: rand(200, view.W * 0.9), life: 1.8, c: j % 3 ? VOLT : PINK });
@@ -156,7 +159,7 @@ const gate: StepHandler = {
   enter() {
     gatePhase = 'hold';
     S.meter = 0;
-    setTempo(130, 'chorus');
+    leaveSong(130, 'chorus');
     setBarChord(bar => GATE_BARS[bar % GATE_BARS.length]);
     S.cruise = 0; S.vel = 0;
     const t = obj('thorn3');
@@ -211,7 +214,7 @@ function pullAflat() {
   cue(null); ink(null); setObjective(''); S.nextChord = null;
   S.dimT = 0; S.vortexT = 0;
   // F의 A♮가 A♭을 원래 음으로 되돌린다
-  CHORDS.F.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, CUT_SLAM_MS + i * 22));
+  CHORDS.F.v.forEach((m, i) => later(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, CUT_SLAM_MS + i * 22));
   if (!reduceMotion) S.shake = Math.max(S.shake, 9);
   splash(tp.x, tp.y - 20, 60, 1.2, PINK);
   for (let j = 0; j < 24; j++) fx.lines.push({ x: tp.x, y: tp.y - 20, a: rand(-Math.PI, 0), l: rand(100, view.W * 0.4), life: 1.3, c: j % 3 ? VOLT : INK });

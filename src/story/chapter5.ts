@@ -2,6 +2,7 @@
 // D.S. → 우산을 든 쪽 → 보지 않을 때 다가오는 것 → 되받아 치기 + 시점 맞추기(♮) → 물그림자에 두 사람
 // → 붓글씨의 질문(기억 테스트) → 쉼표: 잠든 건 나였다 → 붓글씨 문장 바꾸기 → B♭
 import { CHORDS, type ChordId } from '../data/chords';
+import { later } from '../world/timers';
 import { DROPS_FROM } from '../data/chapter2';
 import { ANSWER_SLOT, C5_START, ECHO5, NAT_LOOK, OTHER_AT, OTHER_GAP, QUESTIONS, REST_BEATS, TEXT5 } from '../data/chapter5';
 import { before, type StepId } from '../data/steps';
@@ -119,7 +120,7 @@ const natural: StepHandler = {
       cue(CHORDS[c].label, 'soft');
       if (++idx >= 4) {
         natPhase = 'answer'; idx = 0;
-        setTimeout(() => { cue(null); S.forced = null; resolveChord(); S.nextChord = ECHO5[round][0]; once('listen', true, () => ink(TEXT5.echoListen)); }, 380);
+        later(() => { cue(null); S.forced = null; resolveChord(); S.nextChord = ECHO5[round][0]; once('listen', true, () => ink(TEXT5.echoListen)); }, 380);
       }
     }
   },
@@ -206,7 +207,7 @@ const test: StepHandler = {
     if (right) chordSound(s.chord, 0.6);
     else { test5.missed.push(test5.q); playNote(41, 0.3); }
     const next = test5.q + 1;
-    setTimeout(() => {
+    later(() => {
       if (next < QUESTIONS.length) { ask(next); return; }
       for (let i = 0; i < 4; i++) obj('ans' + i).hidden = true;
       test5.end = test5.missed.length ? 'okay' : 'thanks'; test5.endT = S.t;
@@ -246,12 +247,12 @@ const truthStep: StepHandler = {
     const e = el - restEl;
     // 숨을 멈춘 정적 1.2초 → 진실 컷 (그 사람의 기타가 이어서 울린다)
     once('cut', e > 1.2, () => {
-      [0, 1900, 3800, 5700].forEach((ms, i) => setTimeout(() => chordSound(i % 2 ? 'Ab' : 'Db6', 0.55), ms));
+      [0, 1900, 3800, 5700].forEach((ms, i) => later(() => chordSound(i % 2 ? 'Ab' : 'Db6', 0.55), ms));
       playTruthCut(() => {
         S.rest = -1; S.pressT = 0; S.swap = S.swapT = 1;
         setTempo(65, 'heart'); S.heart2 = 1.8;
         truth.whisperT = S.t;
-        setTimeout(() => { S.sunkT = 1; S.crack = 4; }, 1500);
+        later(() => { S.sunkT = 1; S.crack = 4; }, 1500);
         goLater('c5rewrite', elNow(), 7);
       });
     });

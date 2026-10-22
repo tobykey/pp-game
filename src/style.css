@@ -157,3 +157,7 @@ body.cutting .hud, body.cutting .chips, body.cutting .cue, body.cutting .ink, bo
 
 /* 마지막 관문: 손이 기억한다 — 코드 칩(운지표)이 흐려진다 */
 body.chipsfade .chips{opacity:.12;transition:opacity 3s}
+
+/* 모든 화면 맨 아래: 팬메이드·비영리 안내 (Toby 결정 2026-10-22). 컷신·엔딩 중에도 숨기지 않는다 */
+.fanmade{position:fixed;left:0;right:0;bottom:3px;z-index:20;pointer-events:none;text-align:center;
+  font:11px/1.2 var(--f-mono, monospace);letter-spacing:.02em;color:rgba(23,20,15,.55)}

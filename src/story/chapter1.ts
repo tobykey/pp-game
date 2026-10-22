@@ -1,6 +1,7 @@
 // 챕터 1 '고집의 섬' 장면 진행 (문구·배치는 data/chapter1.ts, 시나리오는 docs/scenario-ch0-1.md 챕터 1)
 // 간주: 기타가 가장 크게 우는 마지막 구간 → 섬에 닿는 순간 줄이 끊어짐 → 1절: 베이스로 탐색
 import { CHORDS, type ChordId } from '../data/chords';
+import { later } from '../world/timers';
 import {
   C1_START, INTERLUDE_BARS, PAINT_W, P_RAIN, P_ROOM, P_STAGE, RAIN_BARS, ROOM_SEQ, SNAP_AT, STAGE_BARS, STAGE_SEQ, TEXT1,
 } from '../data/chapter1';
@@ -166,7 +167,7 @@ const room: StepHandler = {
       // 그림이 끝나면 액자 밖에서 내밀어졌던 담요가 천 조각이 되어 날아온다 (조각 2)
       once('piece', p.play >= 1, () => {
         const d = flyPiece(toScreenX(P_ROOM - PAINT_W / 2 - 0.09), view.H * 0.3);
-        setTimeout(() => { S.pieces = Math.max(S.pieces, 2); }, d * 1000);
+        later(() => { S.pieces = Math.max(S.pieces, 2); }, d * 1000);
       });
       if (p.play >= 1) goLater('c1stage', el, 2.6);
     }
@@ -273,11 +274,11 @@ function pullThorn() {
   // 음악이 뚝 끊긴다 → 한 박 뒤, 딱 한 번 기타가 C 화음으로 터진다 (복선: 가시를 받아 삼킨 그 사람의 소리)
   setTempo(65, 'none');
   const prevMode = S.mode;
-  setTimeout(() => {
+  later(() => {
     S.mode = 'rock'; S.silence = false;
-    CHORDS.C.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 22));
-    setTimeout(() => { S.mode = prevMode; }, 200);
-    setTimeout(() => { S.silence = true; }, 1300);
+    CHORDS.C.v.forEach((m, i) => later(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 22));
+    later(() => { S.mode = prevMode; }, 200);
+    later(() => { S.silence = true; }, 1300);
     S.flash = Math.max(S.flash, reduceMotion ? 0.08 : 0.3); S.flashCol = PINK;
     if (!reduceMotion) S.shake = Math.max(S.shake, 12);
     splash(tp.x, tp.y - 20, 90, 1.4, PINK);
@@ -322,7 +323,7 @@ const rain: StepHandler = {
         rainDone = true; setTempo(65, 'none'); setProgress(''); cue(null); S.nextChord = null;
         // 거절했던 우산이 천 조각이 되어 날아온다 (조각 3)
         const d = flyPiece(toScreenX(P_RAIN + PAINT_W / 2 + 0.09), view.H * 0.3);
-        setTimeout(() => { S.pieces = Math.max(S.pieces, 3); }, d * 1000);
+        later(() => { S.pieces = Math.max(S.pieces, 3); }, d * 1000);
         goLater('c1after', elNow(), 2.6);
         return;
       }

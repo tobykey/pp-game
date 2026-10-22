@@ -1,6 +1,8 @@
 // 챕터 4 '마른 바다 → 폭풍' 장면 진행 (문구는 data/chapter4.ts, 시나리오는 docs/scenario-ch4.md)
 // 물이 빠진다 → 마른 바다(자유 솔로) → 물이 돌아온다 → 폭풍(가드 + 카운터) → 격돌 ①(폭주 스트로크) → D♭ 가시 → D.S.
 import { CHORDS, type ChordId } from '../data/chords';
+import { leaveSong, playSong } from './music';
+import { later } from '../world/timers';
 import { C4_START, CLASH_BPMS, RIFF, SOLO_DIST, STORM_COUNTERS, STORM_GUARDS, TEXT4 } from '../data/chapter4';
 import { before, type StepId } from '../data/steps';
 import { playNote } from '../audio/engine';
@@ -106,7 +108,8 @@ let stormEnded = false;
 const storm: StepHandler = {
   enter() {
     ink(null); stormEnded = false;
-    setTempo(130, 'storm');
+    // 원곡의 간주 + 리프 + 랩 (같은 리프 진행 두 바퀴. MR이 없으면 합성 폭풍 그루브)
+    playSong([['interlude', 8], ['riffRap', 8]], 130, 'storm');
     setBarChord(bar => RIFF[bar % RIFF.length]);
     S.dryT = 0; S.stormT = 1; S.rainFallT = 1; S.cruise = 0.1; S.glow = 0;
     // 물이 한꺼번에 돌아온다
@@ -149,7 +152,7 @@ const clash: StepHandler = {
     S.tug = 0.35; S.forced = RIFF[0]; resolveChord(); S.nextChord = null; setProgress('');
     S.cruise = 0; S.vel = 0; S.glow = 0;
     guardWaves.length = 0; counterWaves.length = 0;
-    setTempo(CLASH_BPMS[0], 'storm');
+    leaveSong(CLASH_BPMS[0], 'storm', 0.3);
     setBarChord(null); // 템포가 바뀔 때마다 그루브 마디 세기가 처음으로 돌아가므로, 베이스는 장면이 잡은 코드(S.forced)를 따른다
     S.pressT = 0.2;
     cue(TEXT4.clashCue, 'rock');
@@ -200,14 +203,14 @@ function winClash() {
   clashEnded = true;
   S.tug = 1;
   cue(null); ink(TEXT4.clashWon);
-  S.pressT = 0; S.punchT = 1; setTimeout(() => { S.punchT = 0; }, 250);
+  S.pressT = 0; S.punchT = 1; later(() => { S.punchT = 0; }, 250);
   S.fburst = 0.7; S.burst = 1;
   if (!reduceMotion) S.shake = Math.max(S.shake, 12);
   const x = boatX() + 200, y = boatY() - 60;
   for (let j = 0; j < 40; j++) fx.lines.push({ x, y, a: rand(-Math.PI, Math.PI), l: rand(150, view.W * 0.7), life: 1.5, c: j % 3 ? VOLT : PINK });
   splash(x, y, 80, 1.5, PINK);
   setTempo(65, 'heart');
-  setTimeout(() => { S.tug = -1; }, 900);
+  later(() => { S.tug = -1; }, 900);
   goLater('c4thorn', elNow(), 2.2);
 }
 
@@ -239,7 +242,7 @@ function pullDflat() {
   cue(null); ink(null); setObjective(''); S.nextChord = null;
   S.dimT = 0; S.vortexT = 0;
   // D의 D♮가 D♭을 원래 음으로 되돌린다 (곡에 없는 화음 = 폭풍 속에서 혼자 쥔 낯선 화음)
-  CHORDS.D.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, CUT_SLAM_MS + i * 22));
+  CHORDS.D.v.forEach((m, i) => later(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, CUT_SLAM_MS + i * 22));
   splash(tp.x, tp.y - 20, 60, 1.2, PINK);
   const th = thorns[3]; // D♭
   th.gone = true; th.fly = { t: S.t, vx: 0, vy: 0, rot: 3, toBow: true };

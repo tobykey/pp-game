@@ -41,13 +41,18 @@ export function playThornCut(c: ThornCut, done?: () => void) {
 }
 /** 진실 컷신: 화면 가득 꿈 바깥의 머리맡을 보여 준다 */
 export function playTruthCut(done?: () => void) {
-  cut = { kind: 'truth', t: 0, end: TRUTH_DUR + FADE };
+  // 끝까지 다 보여 준 뒤 클릭해야 넘어간다 (미리 넘겨 버리지 않게)
+  cut = { kind: 'truth', t: 0, end: Infinity };
   drops = []; onEnd = done ?? null;
   document.body.classList.add('cutting');
 }
 export const cutActive = () => cut !== null;
 /** 0.8초가 지나면 클릭으로 건너뛸 수 있다 */
-export function skipCut() { if (cut && cut.t > 0.8) cut.t = Math.max(cut.t, cut.end - FADE); }
+export function skipCut() {
+  if (!cut) return;
+  if (cut.kind === 'truth') { if (cut.t >= TRUTH_DUR) cut.end = cut.t + FADE; return; }
+  if (cut.t > 0.8) cut.t = Math.max(cut.t, cut.end - FADE);
+}
 
 export function tickCut(dt: number) {
   if (!cut) return;
@@ -78,7 +83,14 @@ export function drawCut() {
   ctx.globalAlpha = clamp01(alpha);
   ctx.beginPath(); ctx.rect(x0, y0, pw, ph); ctx.save(); ctx.clip();
   if (backdrop.paper) ctx.drawImage(backdrop.paper, 0, 0, W, H); else { ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, H); }
-  if (cut.kind === 'truth') drawBedside(t);
+  if (cut.kind === 'truth') {
+    drawBedside(t);
+    // 다 보여 준 뒤: 클릭해서 넘기기
+    if (t >= TRUTH_DUR && cut.end === Infinity) {
+      ctx.save(); ctx.globalAlpha = 0.55 + 0.35 * Math.sin(t * 3); ctx.fillStyle = INK; ctx.font = `20px ${BRUSH}`; ctx.textAlign = 'center';
+      ctx.fillText('클릭하면 넘어갑니다', W / 2, H * 0.92); ctx.restore();
+    }
+  }
   else if (t < HAND0 || !cut.hand) drawPull(t, cut); else drawHand(t - HAND0);
   for (const d of drops) { ctx.fillStyle = d.c; ctx.beginPath(); ctx.ellipse(d.x, d.y, d.r * 1.6, d.r, Math.atan2(d.vy, d.vx), 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();

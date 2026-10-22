@@ -1,4 +1,5 @@
 // 줄 하나를 튕겼을 때 일어나는 일: 소리 + 줄 진동 + 파동 (+ 세면 ff 연출)
+import { later } from './timers';
 import { CHORDS, ROOT, type ChordId } from '../data/chords';
 import { audioOut } from '../audio/engine';
 import { bass } from '../audio/kit';
@@ -47,7 +48,7 @@ export function bassStroke(chord: ChordId, x: number) {
  * 코드 하나를 한 번 긁어 들려준다 (되받아 치기의 '들려주는 소리' 등). muted면 팜뮤트로 짧게
  */
 export function strumChord(chord: ChordId, dyn: number, muted: boolean) {
-  CHORDS[chord].v.forEach((m, i) => setTimeout(() => {
+  CHORDS[chord].v.forEach((m, i) => later(() => {
     const prev = S.mute; S.mute = muted;
     playNote(m, dyn);
     S.mute = prev;

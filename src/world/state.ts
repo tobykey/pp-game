@@ -14,7 +14,7 @@ import { seeded } from '../util/math';
 /** 화면 크기 (CSS 픽셀)와 화면 배율 */
 export const view = { W: 0, H: 0, DPR: 1 };
 
-export type Groove = 'none' | 'heart' | 'hook' | 'chorus' | 'verse' | 'pre' | 'storm';
+export type Groove = 'none' | 'heart' | 'hook' | 'chorus' | 'verse' | 'pre' | 'storm' | 'mr';
 
 export const S = {
   started: false,

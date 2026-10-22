@@ -1,6 +1,7 @@
 // 시작점: 모듈을 연결하고 게임 루프를 돌린다
 import './style.css';
 import { initAudio } from './audio/engine';
+import { loadMR, mrReady } from './audio/mr';
 import { STEPS, STEP_NAMES, type StepId } from './data/steps';
 import { bindKeyboard } from './input/keyboard';
 import { bindPointer, tickPointer } from './input/pointer';
@@ -27,6 +28,7 @@ import { initMenu } from './ui/menu';
 import { nearestBeat, setTempo } from './world/rhythm';
 import { OBJ, S, thorns } from './world/state';
 import { update } from './world/update';
+import { tickTimers } from './world/timers';
 
 initHud({ onChip: toggleSticky, onMode: setMode, onReset: () => { location.href = location.pathname; } });
 bindPointer(cv);
@@ -39,7 +41,7 @@ function frame(now: number) {
   last = now;
   // 메뉴가 열려 있으면 세상이 멈춘다 (그림은 그대로)
   // 슬로모션이면 세상이 느리게 흐른다 (박 시계와 입력은 실제 시간 그대로)
-  if (!S.paused) { update(dt * S.timeScale); tickPointer(dt); tickCut(dt); }
+  if (!S.paused) { update(dt * S.timeScale); tickPointer(dt); tickCut(dt); tickTimers(dt); }
   S.slowmo += (S.slowmoT - S.slowmo) * Math.min(1, dt * 3);
   draw();
   requestAnimationFrame(frame);
@@ -57,8 +59,10 @@ const saved = loadSaved();
 const cont = document.querySelector<HTMLButtonElement>('#cont')!;
 if (saved && saved !== 'wake') { cont.hidden = false; cont.textContent = `이어서 · ${STEP_NAMES[saved]}`; }
 
-function start(step: StepId) {
+async function start(step: StepId) {
   try { initAudio(); } catch { /* 소리가 안 나도 화면은 계속 */ }
+  // 원곡 반주를 미리 불러 둔다 (3초 안에 안 되면 합성음으로 시작하고, 다 불러지면 그다음 클라이맥스부터 원곡)
+  await Promise.race([loadMR(), new Promise(r => setTimeout(r, 3000))]);
   S.started = true;
   cv.style.cursor = BRUSH_CURSOR;
   document.querySelector<HTMLElement>('#start')!.hidden = true;
@@ -81,4 +85,4 @@ document.querySelector('#go')!.addEventListener('click', () => start((jump.value
 cont.addEventListener('click', () => start(saved!));
 
 // 자동 테스트용 (개발 서버에서만)
-if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves, test5, profReport, profReset, lastStroke } });
+if (import.meta.env.DEV) Object.assign(window, { __pp: { S, nearestBeat, go, OBJ, thorns, guardWaves, counterWaves, test5, profReport, profReset, lastStroke, mrReady } });

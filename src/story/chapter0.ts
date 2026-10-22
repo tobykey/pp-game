@@ -1,5 +1,7 @@
 // 챕터 0 '안개' 장면 진행 (문구·배치는 data/chapter0.ts, 시나리오는 docs/scenario-ch0-1.md)
 import { CHORDS, type ChordId } from '../data/chords';
+import { playSong } from './music';
+import { stopMR } from '../audio/mr';
 import { MODES } from '../data/modes';
 import { CHORUS_BARS, CHORUS_SPEED, HOOK_SEQ, LAMP_X, ROW_DIST, TEXT } from '../data/chapter0';
 import { before, type StepId } from '../data/steps';
@@ -166,7 +168,8 @@ let chorusEnded = false;
 const chorus: StepHandler = {
   enter() {
     chorusEnded = false;
-    setTempo(130, 'chorus');
+    // 원곡의 후렴 1 (MR이 없으면 합성 그루브)
+    playSong([['chorus1', CHORUS_BARS.length]], 130, 'chorus');
     unlock(['Db', 'Eb', 'Cm', 'F']);
     setBarChord(bar => CHORUS_BARS[bar] ?? null);
     S.cruise = CHORUS_SPEED;
@@ -204,6 +207,7 @@ const chorus: StepHandler = {
 };
 function endVision() {
   chorusEnded = true;
+  stopMR(0.8);
   S.forced = null; S.nextChord = null; resolveChord();
   setBarChord(null);
   S.flash = reduceMotion ? 0.2 : 0.45; S.flashCol = '#ffffff';

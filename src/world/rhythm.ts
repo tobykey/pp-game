@@ -24,6 +24,18 @@ export function setTempo(bpm: number, groove: Groove) {
   lastBeat = Math.floor((t - S.clock0) / spb());
 }
 
+/**
+ * 박 시계를 정해진 시각에 맞춘다 (원곡 MR을 틀 때: t0 = MR 구간의 첫 박이 울리는 시각, performance.now 기준 초).
+ * 그 시각이 그루브의 0번 박이 된다
+ */
+export function syncTempo(bpm: number, groove: Groove, t0: number) {
+  const t = now();
+  S.clock0 = t0; S.bpm = bpm; S.groove = groove;
+  groove0 = 0;
+  lastStep = Math.floor((t - t0) / (spb() / 4));
+  lastBeat = Math.floor((t - t0) / spb());
+}
+
 /** 지금이 몇 번째 박인지 (소수) */
 export const beatPos = (t = now()) => (t - S.clock0) / spb();
 

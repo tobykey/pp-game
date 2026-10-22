@@ -4,6 +4,8 @@ import { S, str, view } from '../world/state';
 import { boatScale, boatX, boatY, seaY, stringY, sx0, sx1 } from '../world/geometry';
 import { ctx } from './canvas';
 import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette';
+import { otherScene } from './chapter5Art';
+import type { PaintingScene } from '../data/defs';
 
 const PINK = '#ff2a7f';
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
@@ -109,5 +111,32 @@ export function drawEnding() {
     ctx.globalAlpha = clamp01((t - 4) / 1.5); ctx.fillStyle = INK_SOFT; ctx.font = `${Math.round(Math.min(22, W / 40))}px ${BRUSH}`;
     ctx.fillText(TEXT6.end, W / 2, H * 0.8);
   }
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+
+/**
+ * 회상 한 마디: 함께 밀어낸 뒤의 정적 속에, 지나온 기억들이 그 사람 쪽에서 본 모습으로 한 장씩 스쳐 간다
+ * (번쩍이지 않게 천천히 겹쳐 바뀐다)
+ */
+export const recall = { t0: -1 };
+const RECALL: PaintingScene[] = ['meet', 'room', 'stage', 'rain'];
+export const RECALL_EACH = 1.5, RECALL_DUR = RECALL.length * RECALL_EACH + 1.2;
+export function drawRecall() {
+  if (recall.t0 < 0) return;
+  const t = S.t - recall.t0;
+  if (t > RECALL_DUR + 1) return;
+  const { W, H } = view, fw = Math.min(W * 0.46, 560), fh = fw * 0.55, f = { x: (W - fw) / 2, y: H * 0.16, w: fw, h: fh };
+  const whole = clamp01(t / 0.8) * clamp01((RECALL_DUR + 1 - t) / 1);
+  ctx.save();
+  ctx.globalAlpha = 0.45 * whole; ctx.fillStyle = '#14120f'; ctx.fillRect(0, 0, W, H);
+  RECALL.forEach((scene, i) => {
+    const a = clamp01((t - i * RECALL_EACH) / 0.6) * clamp01(((i + 1) * RECALL_EACH + 0.6 - t) / 0.6) * whole;
+    if (a <= 0.01) return;
+    ctx.globalAlpha = a; ctx.fillStyle = PAPER; ctx.fillRect(f.x, f.y, f.w, f.h);
+    ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(f.x, f.y, f.w, f.h);
+    ctx.save(); ctx.beginPath(); ctx.rect(f.x + 5, f.y + 5, f.w - 10, f.h - 10); ctx.clip();
+    otherScene((u, v) => [f.x + u * f.w, f.y + v * f.h] as const, f, scene, 1);
+    ctx.restore();
+  });
   ctx.restore(); ctx.globalAlpha = 1;
 }

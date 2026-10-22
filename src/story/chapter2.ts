@@ -1,6 +1,7 @@
 // 챕터 2 '멈춘 시간' 장면 진행 (문구·배치는 data/chapter2.ts, 시나리오는 docs/scenario-ch2.md)
 // 멈춘 비 → 빗방울 되받아 치기 → 우산 아래(첫 만남) → 쏟아지는 비(팜뮤트 가드) → Csus4 → C → 길게 긁어 후렴으로
 import { CHORDS, type ChordId } from '../data/chords';
+import { later } from '../world/timers';
 import {
   C2_START, COLUMN_GAP, COLUMNS, FROZEN_STOP, GUARD_BARS, GUARD_BEATS, P_MEET, TEXT2,
 } from '../data/chapter2';
@@ -131,7 +132,7 @@ const umbrella: StepHandler = {
     // 처음 만난 순간의 우산 조각이 날아온다 (조각 4)
     once('piece', p.play >= 1, () => {
       const d = flyPiece(toScreenX(P_MEET - 0.1), view.H * 0.22);
-      setTimeout(() => { S.pieces = Math.max(S.pieces, 4); }, d * 1000);
+      later(() => { S.pieces = Math.max(S.pieces, 4); }, d * 1000);
     });
     if (p.play >= 1) goLater('c2guard', el, 5);
   },
@@ -239,10 +240,10 @@ function finale() {
   const o = audioOut();
   if (o) { scratch(o.ac.currentTime + 0.01, 0.7); crash(o.ac.currentTime + 0.72, 1.2); }
   // 기대를 깨고 후렴(D♭)으로 터진다
-  setTimeout(() => {
+  later(() => {
     const prev = S.mode; S.mode = 'rock';
-    CHORDS.Db.v.forEach((m, i) => setTimeout(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 20));
-    setTimeout(() => { S.mode = prev; }, 200);
+    CHORDS.Db.v.forEach((m, i) => later(() => { playNote(m, 1); str[i].amp = 15; str[i].hot = 1; }, i * 20));
+    later(() => { S.mode = prev; }, 200);
     S.dimT = 0; S.frozenVisT = 0;
     S.flash = Math.max(S.flash, reduceMotion ? 0.12 : 0.35); S.flashCol = '#ffffff';
     if (!reduceMotion) S.shake = Math.max(S.shake, 8);
