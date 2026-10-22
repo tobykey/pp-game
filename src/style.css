@@ -89,7 +89,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chip.active.oos b{color:var(--volt)}
 .sep{width:1px;align-self:stretch;background:rgba(23,20,15,.3);margin:0 4px}
 
-.hint{position:fixed;left:0;right:0;bottom:0;z-index:2;pointer-events:none;text-align:center;font-size:11.5px;color:var(--ink-soft);
+.hint{position:fixed;left:0;right:0;bottom:16px;z-index:2;pointer-events:none;text-align:center;font-size:11.5px;color:var(--ink-soft);
   padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .hint b{color:var(--ink);font-weight:700}

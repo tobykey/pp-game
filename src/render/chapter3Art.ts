@@ -148,10 +148,12 @@ export function hopeSailPatches(mx: number, p: number) {
     const lit = i < Math.floor(S.glow);
     ctx.save();
     if (lit) { ctx.shadowColor = VOLT; ctx.shadowBlur = 14; }
-    ctx.fillStyle = lit ? VOLT : PINK; ctx.strokeStyle = INK; ctx.lineWidth = 1.2;
-    // 평소엔 한지에 옅게 물든 조각, 빛날 때만 형광
-    ctx.globalAlpha = (lit ? 0.9 : 0.32) * p;
-    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // 평소엔 한지에 옅게 물든 천 조각, 빛날 때만 형광. 가장자리는 바늘땀
+    ctx.fillStyle = lit ? VOLT : PINK; ctx.globalAlpha = (lit ? 0.9 : 0.38) * p;
+    const j = (i * 0.37) % 0.8 - 0.4; // 조각마다 조금씩 비뚤게 기움
+    ctx.beginPath(); ctx.moveTo(a[0] + j, a[1]); ctx.lineTo(b[0], b[1] + j); ctx.lineTo(c[0] - j, c[1]); ctx.lineTo(d[0], d[1] - j); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 0.7 * p; ctx.strokeStyle = INK; ctx.lineWidth = 0.8; ctx.setLineDash([2.2, 2]);
+    ctx.stroke(); ctx.setLineDash([]);
     ctx.restore();
   }
 }

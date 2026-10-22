@@ -1,7 +1,7 @@
 // 박 시계와 그루브(박마다 울리는 심장·드럼·베이스)
 // 박은 화면 프레임이 아니라 실제 시간(performance.now)으로 잰다. 그래야 입력 판정이 정확하다
 import { ROOT, type ChordId } from '../data/chords';
-import { audioOut } from '../audio/engine';
+import { acAt, audioOut } from '../audio/engine';
 import { bass, crash, hat, heart, heartFar, kick, snare } from '../audio/kit';
 import { S, type Groove } from './state';
 
@@ -70,12 +70,12 @@ export const grooveBeatPos = () => beatPos() - groove0;
 export function tickRhythm(): number | null {
   const t = now();
   const o = audioOut();
-  const step = spb() / 4, look = 0.1;
+  const step = spb() / 4, look = 0.15;
   const until = Math.floor((t + look - S.clock0) / step);
   for (let i = lastStep + 1; i <= until; i++) {
     if (i < 0) continue;
     const when = S.clock0 + i * step;
-    if (o) playStep(i, Math.max(o.ac.currentTime, o.ac.currentTime + (when - t)), step);
+    if (o) playStep(i, acAt(when), step);
   }
   lastStep = Math.max(lastStep, until);
   const b = Math.floor((t - S.clock0) / spb());

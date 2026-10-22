@@ -15,6 +15,7 @@ import { BRUSH, INK, INK_SOFT, MONO, PAPER, VOLT, reduceMotion } from './palette
 import { drawCut } from './cutscene';
 import { mark, profStart } from './prof';
 import { drawLives, drawRewind } from './rewindArt';
+import { drawHull } from './art/boatArt';
 import { allies, drawAllies, drawChoice, drawDuetStrings, drawEnding, drawRecall } from './chapter6Art';
 import { crackToShoulder, drawClashGauge, drawClashWall, drawCrackTexts, drawDrySea, drawGrounded, drawRelic, drawSign, drawStorm, drawTrails } from './chapter4Art';
 import { drawAnswer, drawCreepers, drawNatural, drawQuestion, drawRest, drawRewrite, drawSunk, drawTruth, meLying, personWithGuitar, secondReflection } from './chapter5Art';
@@ -48,16 +49,11 @@ export function draw() {
     const fx0 = playerX(), fy0 = boatY() - 20, z = 1 + 0.9 * S.zoom;
     ctx.translate(fx0, fy0); ctx.scale(z, z); ctx.translate(-fx0, -fy0);
   }
-  // far mountains (always visible, faint) — 아주 느리게 흘러간다
-  ctx.save(); ctx.translate(-camPx * 0.05, 0);
-  for (const m of backdrop.mountains) {
-    const g = ctx.createLinearGradient(0, hz() - H * 0.12, 0, hz() + 4);
-    g.addColorStop(0, `rgba(23,20,15,${m.al})`); g.addColorStop(1, 'rgba(23,20,15,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-20, hz() + 6);
-    m.pts.forEach(([x, y]) => ctx.lineTo(x, y));
-    ctx.lineTo(m.pts[m.pts.length - 1][0], hz() + 6); ctx.fill();
+  // 먼 산: 수묵 산 세 겹. 먼 산일수록 느리게 흐른다 (가로로 끝없이 이어 붙음)
+  for (const m of backdrop.hills) {
+    const off = ((-camPx * m.par) % m.w + m.w) % m.w - m.w;
+    for (let x = off; x < W; x += m.w) ctx.drawImage(m.img, x, m.top, m.w, m.h);
   }
-  ctx.restore();
   ctx.strokeStyle = 'rgba(23,20,15,.35)'; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(0, hz() + 2); ctx.lineTo(W, hz() + 2); ctx.stroke();
   mark('mountains');
@@ -66,14 +62,17 @@ export function draw() {
   OBJ.filter(o => o.kind === 'painting').forEach(drawPainting);
   drawLights();
   mark('isles+paintings+lights');
-  // sea strokes — 가까운 물결일수록 빨리 지나간다
-  ctx.strokeStyle = INK; ctx.lineCap = 'round';
-  for (const s of backdrop.sea) {
+  // 물빛 (수평선 쪽이 옅게 어둡다)
+  if (backdrop.water) ctx.drawImage(backdrop.water, 0, hz(), W, sb() + 30 - hz());
+  // 물결: 마른 붓 자국 그림을 늘려 붙인다. 가까운 물결일수록 빨리 지나가고 굵다
+  const spr = backdrop.seaSprites;
+  backdrop.sea.forEach((s, i) => {
     const sx = wrap(s.x - camPx * (0.35 + 0.65 * s.d), -60 - s.len, W + 60);
     const xx = sx + Math.sin(S.t * 0.55 + s.ph) * 10 * (0.3 + s.d);
-    ctx.globalAlpha = s.a; ctx.lineWidth = s.w;
-    ctx.beginPath(); ctx.moveTo(xx, s.y); ctx.quadraticCurveTo(xx + s.len / 2, s.y - 1.6 * s.w, xx + s.len, s.y); ctx.stroke();
-  }
+    const h = 3 + s.w * 3.2;
+    ctx.globalAlpha = Math.min(1, s.a * 0.95);
+    ctx.drawImage(spr[i % spr.length], xx, s.y - h / 2, s.len * 1.15, h);
+  });
   ctx.globalAlpha = 1;
   mark('sea');
   drawDrySea();
@@ -362,15 +361,27 @@ function drawBoat(acc: string) {
   ctx.save(); ctx.translate(bx, by); ctx.rotate(Math.sin(S.t * 0.9) * 0.025 + S.wobble); ctx.scale(s, s);
   ctx.globalAlpha = 0.18; ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(0, 10, 112, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
   const mx = -8;
-  // full sail — 후렴 예고에서만 활짝 펴진다
+  // 돛: 한지 천처럼. 돛대 쪽은 그늘지고 바람을 안은 배는 밝다. 테두리는 굵기가 변하는 붓선, 살대는 옅은 먹
   if (S.sail > 0.01) {
     const p = S.sail;
-    ctx.fillStyle = 'rgba(234,230,222,.96)'; ctx.strokeStyle = INK; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(mx, -128); ctx.quadraticCurveTo(mx + 110 * p, -80, mx + 70 * p, -16); ctx.lineTo(mx, -16); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.strokeStyle = acc; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(mx + 2, -122); ctx.quadraticCurveTo(mx + 100 * p, -78, mx + 64 * p, -20); ctx.stroke();
-    ctx.strokeStyle = INK; ctx.lineWidth = 1.2;
-    for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(mx, -128 + k * 27); ctx.lineTo(mx + (60 + 20 * Math.sin(k)) * p, -128 + k * 29); ctx.stroke(); }
+    const sailPath = () => { ctx.beginPath(); ctx.moveTo(mx, -128); ctx.quadraticCurveTo(mx + 110 * p, -80, mx + 70 * p, -16); ctx.lineTo(mx, -16); ctx.closePath(); };
+    const cloth = ctx.createLinearGradient(mx, 0, mx + 90 * p, 0);
+    cloth.addColorStop(0, 'rgba(214,206,192,.97)'); cloth.addColorStop(0.55, 'rgba(240,236,228,.97)'); cloth.addColorStop(1, 'rgba(226,220,208,.97)');
+    ctx.fillStyle = cloth; sailPath(); ctx.fill();
+    // 바람에 진 천의 주름 (옅은 먹)
+    ctx.save(); sailPath(); ctx.clip(); ctx.strokeStyle = 'rgba(23,20,15,.07)'; ctx.lineWidth = 6;
+    for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(mx + 6, -118 + k * 34); ctx.quadraticCurveTo(mx + 60 * p, -96 + k * 34, mx + 80 * p, -70 + k * 30); ctx.stroke(); }
+    ctx.restore();
+    // 테두리: 위는 가늘고 바람 받는 배는 굵게
+    ctx.strokeStyle = INK; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(mx, -128); ctx.quadraticCurveTo(mx + 60 * p, -108, mx + 88 * p, -80); ctx.stroke();
+    ctx.lineWidth = 3.2; ctx.beginPath(); ctx.moveTo(mx + 88 * p, -80); ctx.quadraticCurveTo(mx + 100 * p, -40, mx + 70 * p, -16); ctx.stroke();
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(mx + 70 * p, -16); ctx.lineTo(mx, -16); ctx.stroke();
+    // 음색(편곡)의 색: 돛 가장자리에 가는 한 줄
+    ctx.strokeStyle = acc; ctx.lineWidth = 3; ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.moveTo(mx + 3, -122); ctx.quadraticCurveTo(mx + 98 * p, -78, mx + 62 * p, -21); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(23,20,15,.45)'; ctx.lineWidth = 0.9;
+    for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(mx, -128 + k * 27); ctx.quadraticCurveTo(mx + 30 * p, -128 + k * 27 - 3, mx + (60 + 20 * Math.sin(k)) * p, -128 + k * 29); ctx.stroke(); }
     // 희망의 돛: 여섯 조각을 기웠다 (빛나는 조각 수 = F 폭발 게이지)
     if (S.hopeSail) hopeSailPatches(mx, p);
   }
@@ -404,9 +415,22 @@ function drawBoat(acc: string) {
   // 겉옷을 풀어 돛에 준 뒤에는 몸이 가늘어지고 옅어지며, 아주 조금 떤다 (복선 7 회수)
   const shiver = S.bare ? Math.sin(S.t * 31) * 0.5 : 0;
   ctx.save(); ctx.globalAlpha = (1 - S.swap) * (1 - S.rise);
-  ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(74, -13 + shiver, 7, 0, Math.PI * 2); ctx.fill();
+  // 머리와 흘러내린 머리칼
+  ctx.fillStyle = INK; ctx.beginPath(); ctx.ellipse(74, -13 + shiver, 6.6, 6, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(78, -18 + shiver); ctx.quadraticCurveTo(86, -14 + shiver, 82, -6 + shiver); ctx.quadraticCurveTo(79, -10 + shiver, 76, -8 + shiver); ctx.fill();
+  // 누운 몸: 옷자락이 뱃전으로 흘러내린 한 획. 겉옷을 돛에 준 뒤엔 가늘고 옅다
   ctx.fillStyle = S.bare ? INK_SOFT : INK;
-  ctx.beginPath(); ctx.ellipse(46, -9 + shiver, S.bare ? 24 : 26, S.bare ? 5 : 7, -0.04, 0, Math.PI * 2); ctx.fill();
+  {
+    const th = S.bare ? 0.7 : 1, y = shiver;
+    ctx.beginPath(); ctx.moveTo(68, -16 * th + y);
+    ctx.quadraticCurveTo(48, -19 * th + y, 26, -12 * th + y);
+    ctx.quadraticCurveTo(19, -9 + y, 22, -5 + y);
+    ctx.quadraticCurveTo(44, -1 + y, 64, -5 + y);
+    ctx.quadraticCurveTo(70, -9 + y, 68, -16 * th + y); ctx.fill();
+    // 옷 주름 (한지 빛 가는 선)
+    ctx.strokeStyle = 'rgba(234,230,222,.35)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(60, -12 * th + y); ctx.quadraticCurveTo(46, -10 * th + y, 32, -9 * th + y); ctx.stroke();
+  }
   ctx.fillStyle = INK;
   ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.lineCap = 'round';
   // 자세는 내가 보지 않을 때 바뀐다: 0 내 쪽으로 뻗은 손, 1 가슴에 얹은 손, 2 뱃전 아래로 늘어진 손
@@ -431,11 +455,8 @@ function drawBoat(acc: string) {
   ctx.strokeStyle = PINK; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(54, -15); ctx.quadraticCurveTo(44, -4, 54 - 24 * sl, -12 + 4 * (1 - sl)); ctx.stroke();
   ctx.restore();
-  // hull: one loaded brush stroke
-  ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(104, -10); ctx.quadraticCurveTo(60, 4, 0, 0); ctx.quadraticCurveTo(-60, 4, -100, -14);
-  ctx.quadraticCurveTo(-80, 18, 0, 20); ctx.quadraticCurveTo(78, 18, 104, -10); ctx.fill();
-  ctx.strokeStyle = 'rgba(234,230,222,.35)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(80, 6); ctx.quadraticCurveTo(0, 13, -78, 2); ctx.stroke();
+  // 배 몸통: 먹을 듬뿍 먹인 붓 한 획 (미리 그려 둔 그림, art/boatArt.ts)
+  ctx.globalAlpha = 1; drawHull(ctx);
   ctx.restore();
 }
 

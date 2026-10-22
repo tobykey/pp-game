@@ -1,7 +1,7 @@
 // 원곡 반주(MR): 챕터마다 클라이맥스에서만 원곡 구간을 튼다 (Toby 결정 2026-10-22, (나)안)
 // MR을 틀면 게임의 박 시계를 MR에 맞춘다. 합성 드럼·베이스는 쉬고, 플레이어의 기타만 원곡 위에 얹는다
 // MR 파일이 없거나 못 불러오면 false를 돌려주고, 장면은 지금까지의 합성음으로 그대로 간다
-import { audioOut } from './engine';
+import { acAt, audioOut, mrVolume, onMrVolume } from './engine';
 
 /** MR 분석값 (2026-10-22): 템포와, 게임이 쓰는 구간의 첫 박이 MR에서 몇 초인지 (베이스 근음으로 맞춤) */
 export const MR_BPM = 130.798;
@@ -15,6 +15,10 @@ export const MR_SECTIONS = {
 } as const;
 export type MrSection = keyof typeof MR_SECTIONS;
 const BAR = 4 * 60 / MR_BPM;
+/** MR 원음이 합성 기타보다 훨씬 커서, 설정 100%일 때의 크기 (Toby: MR이 너무 크다 → 낮춤) */
+const LEVEL = 0.55;
+// 메뉴에서 원곡 음량을 바꾸면 지금 나오는 MR에도 바로
+onMrVolume(v => { const o = audioOut(); if (!o) return; for (const p of playing) p.gain.gain.setTargetAtTime(LEVEL * v, o.ac.currentTime, 0.05); });
 
 let buffer: AudioBuffer | null = null, loading: Promise<void> | null = null;
 let playing: { src: AudioBufferSourceNode; gain: GainNode }[] = [];
@@ -41,20 +45,21 @@ export function playMR(segs: [MrSection, number?][], lead = 0.12): number | null
   const o = audioOut();
   if (!o || !buffer) return null;
   stopMR(0.05);
-  const { ac } = o, t0 = ac.currentTime + lead;
+  // 게임 시계의 t0Perf에 첫 박이 울리도록, 드럼과 같은 시계 변환으로 오디오 시각을 정한다
+  const t0Perf = performance.now() / 1000 + lead, t0 = acAt(t0Perf);
   let at = t0;
   for (const [sec, bars] of segs) {
-    const src = ac.createBufferSource(), g = ac.createGain();
-    src.buffer = buffer; g.gain.value = 0.85;
+    const src = o.ac.createBufferSource(), g = o.ac.createGain();
+    src.buffer = buffer; g.gain.value = LEVEL * mrVolume();
     src.connect(g); g.connect(o.out);
     const dur = bars ? bars * BAR : undefined;
     src.start(at, MR_SECTIONS[sec], dur);
     // 이어 붙이는 구간끼리 끊김이 들리지 않게 끝을 아주 짧게 줄인다
-    if (dur) { g.gain.setValueAtTime(0.85, at + dur - 0.02); g.gain.linearRampToValueAtTime(0, at + dur); }
+    if (dur) { g.gain.setValueAtTime(LEVEL * mrVolume(), at + dur - 0.02); g.gain.linearRampToValueAtTime(0, at + dur); }
     playing.push({ src, gain: g });
     if (dur) at += dur;
   }
-  return performance.now() / 1000 + lead;
+  return t0Perf;
 }
 
 /** 지금 나는 MR을 서서히 끈다 */

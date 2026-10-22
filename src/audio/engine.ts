@@ -17,6 +17,27 @@ export function setMasterVolume(v: number) {
   masterVol = v;
   if (AC && masterGain) masterGain.gain.setTargetAtTime(v, AC.currentTime, 0.03);
 }
+/**
+ * 게임 시계(performance.now, 초) → 오디오 시계(AudioContext.currentTime).
+ * currentTime은 덩어리로 늦게 갱신되어, 매번 그 값으로 바꾸면 예약 시각이 수~수십 ms씩 들쭉날쭉해진다(박이 밀림).
+ * 그래서 두 시계의 차이를 '가장 작게 나온 값' 쪽으로 붙잡아 두고, 아주 천천히만 따라가게 해 안정된 대응을 쓴다
+ */
+let clockOff: number | null = null, lastSync = 0;
+export function acAt(perfSec: number) {
+  if (!AC) return 0;
+  const p = performance.now() / 1000, sample = p - AC.currentTime;
+  if (clockOff == null || Math.abs(sample - clockOff) > 0.25) clockOff = sample; // 처음이거나 일시정지 뒤 크게 벌어지면 다시
+  else clockOff = Math.min(clockOff + Math.max(0, p - lastSync) * 0.002, sample);
+  lastSync = p;
+  return Math.max(AC.currentTime, perfSec - clockOff);
+}
+/** 원곡 반주 음량 0~1 */
+let mrVol = 0.5;
+export const mrVolume = () => mrVol;
+export function setMrVolume(v: number) { mrVol = v; mrVolListeners.forEach(fn => fn(v)); }
+const mrVolListeners: ((v: number) => void)[] = [];
+export function onMrVolume(fn: (v: number) => void) { mrVolListeners.push(fn); }
+
 /** 일시정지: 소리를 통째로 멈췄다가 이어 간다 */
 export function suspendAudio() { AC?.suspend(); }
 export function resumeAudio() { AC?.resume(); }

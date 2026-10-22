@@ -1,6 +1,6 @@
 // 일시정지 메뉴와 설정 (브라우저에 기억)
 import { STEPS, STEP_NAMES } from '../data/steps';
-import { resumeAudio, setGuitarVolume, setMasterVolume, suspendAudio } from '../audio/engine';
+import { resumeAudio, setGuitarVolume, setMasterVolume, setMrVolume, suspendAudio } from '../audio/engine';
 import { setReduceMotion, reduceMotion } from '../render/palette';
 import { now } from '../world/rhythm';
 import { S } from '../world/state';
@@ -9,8 +9,8 @@ import { setHelpPinned } from './hud';
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
 const KEY = 'pp.settings';
 
-interface Settings { master: number; guitar: number; offset: number; calm: boolean; help: boolean }
-const settings: Settings = { master: 85, guitar: 45, offset: 0, calm: reduceMotion, help: false };
+interface Settings { master: number; guitar: number; mr: number; offset: number; calm: boolean; help: boolean }
+const settings: Settings = { master: 85, guitar: 45, mr: 50, offset: 0, calm: reduceMotion, help: false };
 
 function save() { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch { /* 무시 */ } }
 function load() {
@@ -25,11 +25,13 @@ function load() {
 function apply() {
   setMasterVolume(settings.master / 100);
   setGuitarVolume(settings.guitar / 100);
+  setMrVolume(settings.mr / 100);
   S.offset = settings.offset / 1000;
   setReduceMotion(settings.calm);
   setHelpPinned(settings.help);
   $<HTMLInputElement>('#mvol').value = String(settings.master);
   $<HTMLInputElement>('#gvol').value = String(settings.guitar);
+  $<HTMLInputElement>('#rvol').value = String(settings.mr);
   $<HTMLInputElement>('#vol').value = String(settings.guitar);
   $<HTMLInputElement>('#offset').value = String(settings.offset);
   $('#offsetOut').textContent = `${settings.offset > 0 ? '+' : ''}${settings.offset} ms`;
@@ -59,10 +61,10 @@ export function closeMenu() {
 
 export function initMenu() {
   load(); apply();
-  const num = (id: string, key: 'master' | 'guitar' | 'offset') => $<HTMLInputElement>(id).addEventListener('input', e => {
+  const num = (id: string, key: 'master' | 'guitar' | 'mr' | 'offset') => $<HTMLInputElement>(id).addEventListener('input', e => {
     settings[key] = +(e.target as HTMLInputElement).value; apply(); save();
   });
-  num('#mvol', 'master'); num('#gvol', 'guitar'); num('#vol', 'guitar'); num('#offset', 'offset');
+  num('#mvol', 'master'); num('#gvol', 'guitar'); num('#rvol', 'mr'); num('#vol', 'guitar'); num('#offset', 'offset');
   $<HTMLInputElement>('#calm').addEventListener('change', e => { settings.calm = (e.target as HTMLInputElement).checked; apply(); save(); });
   $<HTMLInputElement>('#showHelp').addEventListener('change', e => { settings.help = (e.target as HTMLInputElement).checked; apply(); save(); });
   $('#menuBtn').addEventListener('click', () => (isMenuOpen() ? closeMenu() : openMenu()));

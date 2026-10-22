@@ -3,6 +3,7 @@ import { view } from '../world/state';
 import { hz, sb } from '../world/geometry';
 import { clamp, lerp, rand, seeded } from '../util/math';
 import { PAPER } from './palette';
+import { makeMountainsArt, makePaperArt, makeSeaStrokes, makeWaterArt, type MountainLayer } from './art/backdrops';
 
 export const cv = document.querySelector<HTMLCanvasElement>('#c')!;
 export const ctx = cv.getContext('2d')!;
@@ -14,6 +15,10 @@ export const backdrop = {
   paper: null as HTMLCanvasElement | null,
   sea: [] as SeaStroke[],
   mountains: [] as Mountain[],
+  /** 그림 작업(2026-10-23): 수묵 산 세 겹, 물빛, 물결 붓 자국 */
+  hills: [] as MountainLayer[],
+  water: null as HTMLCanvasElement | null,
+  seaSprites: [] as HTMLCanvasElement[],
 };
 
 export function resize() {
@@ -26,6 +31,11 @@ export function resize() {
   makePaper();
   makeSea();
   makeMountains();
+  // 한지·산·물빛은 붓으로 그린 그림으로 (한 번만 그려 두고 매 프레임 붙인다)
+  backdrop.paper = makePaperArt();
+  backdrop.hills = makeMountainsArt();
+  backdrop.water = makeWaterArt();
+  if (!backdrop.seaSprites.length) backdrop.seaSprites = makeSeaStrokes();
 }
 
 function makePaper() {
